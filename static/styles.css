@@ -9,6 +9,9 @@ body, button{
     letter-spacing: 0px;
     color: #ffffff;
 }
+hr{
+    margin: 0;
+}
 button{
     margin: 5px;
 }
@@ -25,8 +28,34 @@ button{
     resize: vertical;
     overflow: auto;
 }
-#output{
+#output, #fileSystem{
     border: 1px solid grey;
     width: 100%;
-    height: 20vh;
+    height: 45vh;
+    overflow: scroll;
+}
+#output{
+    background-color: black;
+}
+#bottom{
+    width:100%;
+    height: 40vh;
+    display: grid;
+    grid-template-columns: 50% 50%;
+}
+#list a{
+    color:aqua;
+}
+a:link{
+    color: aqua;
+}
+a:visited{
+    color: teal;
+}
+a:hover{
+    color: aquamarine;
+    text-decoration: underline;
+}
+a:active{
+    color: aqua;
 }

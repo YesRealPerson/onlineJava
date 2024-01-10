@@ -1,45 +1,75 @@
 <!DOCTYPE html>
 <html>
-	<head>
-		<meta http-equiv="Content-Type" content="text/html;charset=utf-8" />
-		<link
-			rel="stylesheet"
-			data-name="vs/editor/editor.main"
-			href="./monaco-editor/min/vs/editor/editor.main.css"
-		/>
-		<link
-			rel="stylesheet"
-			href="./styles.css"
-		/>
-	</head>
-	<body>
-		<div id="main">
-			<div id="container"></div>
+
+<head>
+	<meta http-equiv="Content-Type" content="text/html;charset=utf-8" />
+	<link rel="stylesheet" data-name="vs/editor/editor.main" href="./monaco-editor/min/vs/editor/editor.main.css" />
+	<link rel="stylesheet" href="./styles.css" />
+</head>
+
+<body>
+	<div id="main">
+		<div id="container"></div>
+		<div id="bottom">
 			<div id="output">
-				<button onclick="sendRunRequest()">run code</button>
-				<br>Output:
+				<div style="width:100%; background-color: #222222; height: 50px;">
+					<span style="margin:5px;">Console</span>
+					<br>
+					<button onclick="sendRunRequest()">run code</button>
+					
+				</div>
+				<hr>
 				<div id="console"></div>
 			</div>
+			<div id="fileSystem">
+				<div style="width:100%; background-color: #222222; height: 50px;">
+				<span style="margin:5px;">Files</span>
+				<br>
+				<input autocomplete="off" type="text" placeholder="Make new file" id="newFile">
+			</div>
+				<hr>
+				<span id="list"></span>
+			</div>
 		</div>
-		<script src="./users.js"></script>
+	</div>
+	<script src="./users.js"></script>
 
-		<script>
-			let key = document.cookie.split("=")[1];
-			checkLogin(key, "./");
-			var require = { paths: { vs: '../monaco-editor/min/vs' } };
-		</script>
-		<script src="./monaco-editor/min/vs/loader.js"></script>
-		<script src="./monaco-editor/min/vs/editor/editor.main.nls.js"></script>
-		<script src="./monaco-editor/min/vs/editor/editor.main.js"></script>
-		<script src="./communicate.js"></script>
-		<script>
-			var editor = monaco.editor.create(document.getElementById('container'), {
-				value: ['class Main {', '\tpublic static void main(String[] args){', '\t\tSystem.out.println("Hello world!");','\t}','}'].join('\n'),
-				language: 'java',
-				theme: 'vs-dark'
-			});
-			getFile("Main");
-			readFiles();
-		</script>
-	</body>
+	<script>
+		let key = document.cookie.split("key=")[1];
+		checkLogin(key, "./");
+		var require = { paths: { vs: '../monaco-editor/min/vs' } };
+	</script>
+	<script src="./monaco-editor/min/vs/loader.js"></script>
+	<script src="./monaco-editor/min/vs/editor/editor.main.nls.js"></script>
+	<script src="./monaco-editor/min/vs/editor/editor.main.js"></script>
+	<script src="./communicate.js"></script>
+	<script>
+		var editor = monaco.editor.create(document.getElementById('container'), {
+			language: 'java',
+			theme: 'vs-dark'
+		});
+		getFile("Main");
+		readFiles();
+		document.getElementById("newFile").addEventListener("keyup", async event => {
+			if (event.key !== "Enter") return;
+			const re = new RegExp("^[_A-z0-9]*((-|\s)*[_A-z0-9])*$");
+			let name = document.getElementById("newFile").value;
+			try {
+				document.getElementById("newFile").value = "";
+				name = re.exec([name])[0];
+				const response = await fetch("./makefile?name=" + name, {
+					method: 'POST',
+					headers: {
+						"Authorization": document.cookie.split("key=")[1]
+					},
+				});
+				readFiles();
+			} catch (err) {
+				alert("Invalid name for file! (Must be alphanumeric)\n" + err)
+			}
+			event.preventDefault();
+		});
+	</script>
+</body>
+
 </html>
