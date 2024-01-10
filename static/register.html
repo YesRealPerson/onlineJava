@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta http-equiv="Content-Type" content="text/html;charset=utf-8" />
+        <script src="./users.js"></script>
+    </head>
+    <body>
+        <h1>Register</h1>
+        <div id="error"></div>
+        <form target="dummyframe" onsubmit="register()">
+            <input type="text" placeholder="Email" id="email" pattern="[A-Za-z0-9]+@nhusd\.k12\.ca\.us"><br>
+            <input type="text" placeholder="Username" id="name" pattern="^[_A-z0-9]*((-|\s)*[_A-z0-9])*$"><br>
+            <input type="text" placeholder="Passoword" id="password" pattern="^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$"><br>
+            <input type="submit">
+        </form>
+        <iframe name="dummyframe" id="dummyframe" style="display: none;"></iframe>
+    </body>
+</html>
