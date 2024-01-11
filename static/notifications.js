@@ -1,4 +1,4 @@
-const makeNotification = async (message) => {
+const makeNotification = async (message,time) => {
     let notification = document.createElement("div");
     notification.innerText = message;
     notification.className = "message";
@@ -8,7 +8,7 @@ const makeNotification = async (message) => {
         notification.style.opacity = opacity;    
         await new Promise(r => setTimeout(r, 10));
     }
-    await new Promise(r => setTimeout(r, 1500));
+    await new Promise(r => setTimeout(r, time));
     for(let opacity = 1; opacity > 0; opacity = opacity - 0.1){
         notification.style.opacity = opacity;    
         await new Promise(r => setTimeout(r, 10));

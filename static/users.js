@@ -1,7 +1,6 @@
 const login = async () => {
     let encoded = document.getElementById("name").value + ":" + document.getElementById("password").value
-    encoded = btoa(encoded);
-    console.log(encoded);
+    encoded = CryptoJS.SHA256(encoded).toString(CryptoJS.enc.Base64);
     let response = await fetch("./login", {
         method: "POST",
         body: encoded
@@ -30,10 +29,12 @@ const checkLogin = async (encoded, location) => {
 }
 
 const register = async () => {
-    let data = document.getElementById("email").value+","+document.getElementById("name").value + "," + document.getElementById("password").value
     let response = await fetch("./register", {
         method: "POST",
-        body: data
+        headers: {
+            "Authorization": CryptoJS.SHA256(document.getElementById("name").value + ":" + document.getElementById("password").value).toString(CryptoJS.enc.Base64)
+        },
+        body: document.getElementById("email").value
     })
     if(response.status == 200){
         window.location = "./loginSite"

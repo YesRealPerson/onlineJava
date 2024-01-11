@@ -19,7 +19,7 @@
 					<br>
 					<button onclick="sendRunRequest()">run code</button>
 					<button onclick="sendCompileRequest()">compile code</button>
-					<button onclick="makeNotification('Press Ctrl+S to compile and save your program\n\nPress Ctrl+Enter to run your program')">help</button>
+					<button onclick="makeNotification('Press Ctrl+S to compile and save your program\n\nPress Ctrl+Enter to run your program\n\nMake new files by typing the name of the file into the text box and pressing enter or by changing the class name and compiling.', 10000)">help</button>
 				</div>
 				<hr>
 				<div id="console"></div>
@@ -29,6 +29,7 @@
 					<span style="margin:5px;">Files</span>
 					<br>
 					<input autocomplete="off" type="text" placeholder="Make new file" id="newFile">
+					<button onclick="deleteRequest()">delete current file</button>
 				</div>
 				<hr>
 				<span id="list"></span>
@@ -48,15 +49,20 @@
 	<script src="./communicate.js"></script>
 	<script src="./notifications.js"></script>
 	<script>
+		let keyCounter = 0;
 		var editor = monaco.editor.create(document.getElementById('container'), {
 			language: 'java',
 			theme: 'vs-dark'
 		});
-		getFile("Main");
-		readFiles();
+		const starter = async () => {
+			await getFile("Main");
+			readFiles();
+		}
+		starter();
+		
 		document.getElementById("newFile").addEventListener("keyup", async event => {
 			if (event.key !== "Enter") return;
-			const re = new RegExp("^[_A-z0-9]*((-|\s)*[_A-z0-9])*$");
+			const re = new RegExp("^[_A-z]((-|\s)*[_A-z0-9])*$");
 			let name = document.getElementById("newFile").value;
 			try {
 				document.getElementById("newFile").value = "";
@@ -69,11 +75,12 @@
 				});
 				readFiles();
 			} catch (err) {
-				alert("Invalid name for file! (Must be alphanumeric)\n" + err)
+				makeNotification("Invalid name for file! (Must be alphanumeric and start with a letter)")
 			}
 			event.preventDefault();
 		});
 		document.addEventListener("keydown", function (e) {
+			keyCounter += 1;
 			if (e.keyCode === 83 && (navigator.platform.match("Mac") ? e.metaKey : e.ctrlKey)) {
 				e.preventDefault();
 				sendCompileRequest();
@@ -81,6 +88,11 @@
 			if (e.keyCode === 13 && (navigator.platform.match("Mac") ? e.metaKey : e.ctrlKey)) {
 				e.preventDefault();
 				sendRunRequest();
+			}
+			if(keyCounter == 50){
+				console.log("Updating hash!");
+				updateHash();
+				keyCounter = 0;
 			}
 		}, false);
 	</script>
