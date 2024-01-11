@@ -162,6 +162,8 @@ app.post("/run", async (req, res) => {
             beingNaughty = "Please do not use any javax packages in your projects!";
         } else if (code.indexOf("org.omg.") != -1 || code.indexOf("org.ietf.") != -1 || code.indexOf("org.w3c.") != -1 || code.indexOf("org.xml.") != -1) {
             beingNaughty = "What are you even importing these packages for? Don't please. :)";
+        } else if (code.length > 15000){
+            beingNaughty = "Please do not make files greater than 15,000 characters long..."
         }
         if (beingNaughty == "") {
             fs.readFile("users.json", async (err, haha) => {
@@ -179,7 +181,7 @@ app.post("/run", async (req, res) => {
                                     res.status(500).send(err);
                                 } else {
                                     let worker = new Worker("./runJava.js", {
-                                        "env": { "filename": user + "/" + filename }
+                                        "env": { "filename": user + "/" + filename },
                                     });
                                     worker.on("message", async data => {
                                         res.status(200).send(data);

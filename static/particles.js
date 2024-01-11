@@ -140,7 +140,7 @@ function update() {
   }
 }
 
-canvas.addEventListener('mousemove', function (e) {
+window.addEventListener('mousemove', function (e) {
   mouse.x = e.clientX;
   mouse.y = e.clientY;
 });

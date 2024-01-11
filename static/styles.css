@@ -54,6 +54,8 @@ main > div > * >input{
     font-family: Consolas, "Courier New", monospace;
     font-size: 30px;
     margin-bottom: 20px;
+    background-color: #1e1e1e;
+    color: #ffffff;
 }
 main > div > h1 {
     font-size: 60px;
@@ -71,12 +73,23 @@ main > div > h1 {
     display: flex;
     flex-direction: column;
 }
+#console{
+    word-wrap: break-word;
+}
+#middle{
+    display:flex;
+    border-left: 1px solid grey;
+    border-right: 1px solid grey;
+    width: 100%;
+}
+#middle > *{
+    padding: 8px;
+}
 #container{
     border: 1px solid grey;
     width: 100%;
     height: 50vh;
-    resize: vertical;
-    overflow: auto;
+    margin: 0;
 }
 #output, #fileSystem{
     border: 1px solid grey;
@@ -95,6 +108,7 @@ main > div > h1 {
 }
 .message{
     z-index: 50000;
+    position: relative;
     padding: 3px;
     border: 1px grey solid;
     width: 10vw;

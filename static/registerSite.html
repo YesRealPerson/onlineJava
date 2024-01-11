@@ -5,7 +5,6 @@
     <meta http-equiv="Content-Type" content="text/html;charset=utf-8" />
     <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/3.1.2/rollups/sha256.js"></script>
     <script src="./users.js" defer></script>
-    <script src="./cookie.js" defer></script>
     <script src="./particles.js" defer></script>
     <link rel="stylesheet" href="./styles.css" />
     <title>Register</title>
@@ -18,9 +17,9 @@
         <h1 style="pointer-events: none;">Register</h1>
         <div style="pointer-events: none;" id="error"></div>
         <form target="dummyframe" onsubmit="register()">
-            <input type="text" placeholder="Email" id="email" pattern="[A-Za-z0-9]+@nhusd\.k12\.ca\.us"><br>
-            <input type="text" placeholder="Username" id="name" pattern="^[_A-z0-9]*((-|\s)*[_A-z0-9])*$"><br>
-            <input type="text" placeholder="Password" id="password"
+            <input type="text" placeholder=" Email" id="email" pattern="[A-Za-z0-9]+@nhusd\.k12\.ca\.us"><br>
+            <input type="text" placeholder=" Username" id="name" pattern="^[_A-z0-9]*((-|\s)*[_A-z0-9])*$"><br>
+            <input type="text" placeholder=" Password" id="password"
                 pattern="^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,64}$"><br>
             <input type="submit" value="Submit">
         </form>

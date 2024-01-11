@@ -1,4 +1,4 @@
-const makeNotification = async (message,time) => {
+const makeNotification = async (message, time) => {
     let notification = document.createElement("div");
     notification.innerText = message;
     notification.className = "message";

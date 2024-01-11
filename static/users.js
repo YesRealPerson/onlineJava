@@ -16,7 +16,7 @@ const registerWindow = async () => {
     window.location = "./registerSite";
 }
 const loginWindow = async () => {
-    window.location = "./loginSite";
+    window.location = "./editor"
 }
 const checkLogin = async (encoded, location) => {
     let response = await fetch("./login", {

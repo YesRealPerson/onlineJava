@@ -12,26 +12,27 @@
 	<div id="messageBox"></div>
 	<div id="main">
 		<div id="container"></div>
+		<div id="middle">
+			<div style="width:100%; background-color: #222222; height: 50px; border-right: 1px solid grey;">
+				<span style="margin:5px; ">Console</span>
+				<br>
+				<button onclick="sendRunRequest()">run code</button>
+				<button onclick="sendCompileRequest()">compile code</button>
+				<button
+					onclick="makeNotification('Press Ctrl+S to compile your program\n\nPress Ctrl+Enter to run your program\n\nMake new files by typing the name of the file into the text box and pressing enter.\n\nWhenever you run or compile, your code is saved.\n\nMake sure to save often!', 10000)">help</button>
+			</div>
+			<div style="width:100%; background-color: #222222; height: 50px;">
+				<span style="margin:5px;">Files</span>
+				<br>
+				<input autocomplete="off" type="text" placeholder="Make new file" id="newFile">
+				<button onclick="deleteRequest()">delete current file</button>
+			</div>
+		</div>
 		<div id="bottom">
 			<div id="output">
-				<div style="width:100%; background-color: #222222; height: 50px;">
-					<span style="margin:5px;">Console</span>
-					<br>
-					<button onclick="sendRunRequest()">run code</button>
-					<button onclick="sendCompileRequest()">compile code</button>
-					<button onclick="makeNotification('Press Ctrl+S to compile and save your program\n\nPress Ctrl+Enter to run your program\n\nMake new files by typing the name of the file into the text box and pressing enter or by changing the class name and compiling.', 10000)">help</button>
-				</div>
-				<hr>
 				<div id="console"></div>
 			</div>
 			<div id="fileSystem">
-				<div style="width:100%; background-color: #222222; height: 50px;">
-					<span style="margin:5px;">Files</span>
-					<br>
-					<input autocomplete="off" type="text" placeholder="Make new file" id="newFile">
-					<button onclick="deleteRequest()">delete current file</button>
-				</div>
-				<hr>
 				<span id="list"></span>
 			</div>
 		</div>
@@ -60,7 +61,7 @@
 			readFiles();
 		}
 		starter();
-		
+
 		document.getElementById("newFile").addEventListener("keyup", async event => {
 			if (event.key !== "Enter") return;
 			const re = new RegExp("^[_A-z]((-|\s)*[_A-z0-9])*$");
@@ -94,20 +95,31 @@
 		document.getElementById("container").addEventListener("keydown", function (e) {
 			let code = e.keyCode;
 			let char = String.fromCharCode(code);
-			if(re.test(char)){
+			if (re.test(char)) {
 				keyCounter++;
 			}
 			if (code === 13 && (navigator.platform.match("Mac") ? e.metaKey : e.ctrlKey)) {
 				e.preventDefault();
 				sendRunRequest();
 			}
-			if(keyCounter == 50){
+			if (keyCounter == 50) {
 				console.log("Updating hash!");
 				updateHash();
 				keyCounter = 0;
 			}
 		}, false);
-		
+
+		(function () {
+			// resize the canvas to fill browser window dynamically
+			window.addEventListener('resize', resizeEditor, false);
+
+			function resizeEditor() {
+				let temp = document.getElementById("container").getBoundingClientRect();
+				editor.layout({"height": temp.height-2, "width":temp.width-2});
+			}
+
+			resizeEditor();
+		})();
 	</script>
 </body>
 
