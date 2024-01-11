@@ -49,6 +49,7 @@
 	<script src="./communicate.js"></script>
 	<script src="./notifications.js"></script>
 	<script>
+		const re = new RegExp("^[_A-z0-9]*((-|\s)*[_A-z0-9])*$");
 		let keyCounter = 0;
 		var editor = monaco.editor.create(document.getElementById('container'), {
 			language: 'java',
@@ -80,12 +81,23 @@
 			event.preventDefault();
 		});
 		document.addEventListener("keydown", function (e) {
-			keyCounter += 1;
 			if (e.keyCode === 83 && (navigator.platform.match("Mac") ? e.metaKey : e.ctrlKey)) {
 				e.preventDefault();
 				sendCompileRequest();
 			}
 			if (e.keyCode === 13 && (navigator.platform.match("Mac") ? e.metaKey : e.ctrlKey)) {
+				e.preventDefault();
+				sendRunRequest();
+			}
+		}, false);
+
+		document.getElementById("container").addEventListener("keydown", function (e) {
+			let code = e.keyCode;
+			let char = String.fromCharCode(code);
+			if(re.test(char)){
+				keyCounter++;
+			}
+			if (code === 13 && (navigator.platform.match("Mac") ? e.metaKey : e.ctrlKey)) {
 				e.preventDefault();
 				sendRunRequest();
 			}
@@ -95,6 +107,7 @@
 				keyCounter = 0;
 			}
 		}, false);
+		
 	</script>
 </body>
 
