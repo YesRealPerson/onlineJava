@@ -8,10 +8,16 @@ const login = async () => {
     })
     if(response.status == 200){
         document.cookie = "key="+encoded;
-        window.location = "./editor.html";
+        window.location = "./editor";
     }else{
         document.getElementById("error").innerText = "Invalid username/password!"
     }
+}
+const registerWindow = async () => {
+    window.location = "./registerSite";
+}
+const loginWindow = async () => {
+    window.location = "./loginSite";
 }
 const checkLogin = async (encoded, location) => {
     let response = await fetch("./login", {
@@ -30,7 +36,7 @@ const register = async () => {
         body: data
     })
     if(response.status == 200){
-        window.location = "./"
+        window.location = "./loginSite"
     }else{
         document.getElementById("error").innerText = await response.text();
     }

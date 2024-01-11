@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta http-equiv="Content-Type" content="text/html;charset=utf-8" />
+    <script src="./users.js" defer></script>
+    <script src="./cookie.js" defer></script>
+    <script src="./particles.js" defer></script>
+    <link rel="stylesheet" href="./styles.css" />
+    <title>Register</title>
+</head>
+
+<body>
+    <canvas id="canvas"></canvas>
+    <main>
+        <div>
+        <h1 style="pointer-events: none;">Register</h1>
+        <div style="pointer-events: none;" id="error"></div>
+        <form target="dummyframe" onsubmit="register()">
+            <input type="text" placeholder="Email" id="email" pattern="[A-Za-z0-9]+@nhusd\.k12\.ca\.us"><br>
+            <input type="text" placeholder="Username" id="name" pattern="^[_A-z0-9]*((-|\s)*[_A-z0-9])*$"><br>
+            <input type="text" placeholder="Password" id="password"
+                pattern="^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$"><br>
+            <input type="submit" value="Submit">
+        </form>
+        <div style="font-size: 20px; pointer-events: none;">
+            <h2>Requirements</h2>
+            Email must be a school email.<br><br>
+            Username must be alphanumeric.<br><br>
+            Password must:
+            <ul>
+                <li>Be at least eight characters long</li>
+                <li>Have at least one uppercase letter</li>
+                <li>Have at least one lowercase letter</li>
+                <li>Have at least one number</li>
+                <li>Have at least one symbol (@$%*?&)</li>
+            </ul>
+        </div>
+    </div>
+    </main>
+    <iframe name="dummyframe" id="dummyframe" style="display: none;"></iframe>
+</body>
+
+</html>

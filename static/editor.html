@@ -5,9 +5,11 @@
 	<meta http-equiv="Content-Type" content="text/html;charset=utf-8" />
 	<link rel="stylesheet" data-name="vs/editor/editor.main" href="./monaco-editor/min/vs/editor/editor.main.css" />
 	<link rel="stylesheet" href="./styles.css" />
+	<title>Editor</title>
 </head>
 
 <body>
+	<div id="messageBox"></div>
 	<div id="main">
 		<div id="container"></div>
 		<div id="bottom">
@@ -16,17 +18,18 @@
 					<span style="margin:5px;">Console</span>
 					<br>
 					<button onclick="sendRunRequest()">run code</button>
-					
+					<button onclick="sendCompileRequest()">compile code</button>
+					<button onclick="makeNotification('Press Ctrl+S to compile and save your program\n\nPress Ctrl+Enter to run your program')">help</button>
 				</div>
 				<hr>
 				<div id="console"></div>
 			</div>
 			<div id="fileSystem">
 				<div style="width:100%; background-color: #222222; height: 50px;">
-				<span style="margin:5px;">Files</span>
-				<br>
-				<input autocomplete="off" type="text" placeholder="Make new file" id="newFile">
-			</div>
+					<span style="margin:5px;">Files</span>
+					<br>
+					<input autocomplete="off" type="text" placeholder="Make new file" id="newFile">
+				</div>
 				<hr>
 				<span id="list"></span>
 			</div>
@@ -36,13 +39,14 @@
 
 	<script>
 		let key = document.cookie.split("key=")[1];
-		checkLogin(key, "./");
+		checkLogin(key, "./loginSite");
 		var require = { paths: { vs: '../monaco-editor/min/vs' } };
 	</script>
 	<script src="./monaco-editor/min/vs/loader.js"></script>
 	<script src="./monaco-editor/min/vs/editor/editor.main.nls.js"></script>
 	<script src="./monaco-editor/min/vs/editor/editor.main.js"></script>
 	<script src="./communicate.js"></script>
+	<script src="./notifications.js"></script>
 	<script>
 		var editor = monaco.editor.create(document.getElementById('container'), {
 			language: 'java',
@@ -69,6 +73,16 @@
 			}
 			event.preventDefault();
 		});
+		document.addEventListener("keydown", function (e) {
+			if (e.keyCode === 83 && (navigator.platform.match("Mac") ? e.metaKey : e.ctrlKey)) {
+				e.preventDefault();
+				sendCompileRequest();
+			}
+			if (e.keyCode === 13 && (navigator.platform.match("Mac") ? e.metaKey : e.ctrlKey)) {
+				e.preventDefault();
+				sendRunRequest();
+			}
+		}, false);
 	</script>
 </body>
 
