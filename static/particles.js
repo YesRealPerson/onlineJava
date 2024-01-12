@@ -26,7 +26,8 @@ let counter = 0;
 function generateStars() {
   stars = [];
   let x = Math.floor(window.innerWidth * window.innerHeight / 9000);
-  if (x > 500) x = 500;
+  // let x = 1000;
+  // if (x > 500) x = 500;
 
   for (var i = 0; i < x; i++) {
     let nX = 1;

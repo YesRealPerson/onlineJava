@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+	<meta http-equiv="Content-Type" content="text/html;charset=utf-8" />
+	<link rel="stylesheet" data-name="vs/editor/editor.main" href="./monaco-editor/min/vs/editor/editor.main.css" />
+	<link rel="stylesheet" href="./styles.css" />
+	<title>History Viewer</title>
+</head>
+
+<body>
+	<div id="messageBox"></div>
+	<div id="main">
+		<div id="adminPanel">
+			<select id="userSelect">
+				<option value="undefined">Choose a user</option>
+			</select>
+			<div>
+				Number of recorded changes: <span id="changes" style="border-right: 1px solid grey;">No file selected!</span>
+				<br>Number of major changes: <span id="changesMajor" style="border-right: 1px solid grey;">No file selected!</span>
+			</div>
+			<br>
+			History Slider (right is most recent):<br>
+			<input type="range" min="0" max="0" value="0" id="historyIndex">
+		</div>
+		<div id="container"></div>
+		<div id="middle">
+			<div style="width:100%; background-color: #222222; height: 50px; border-right: 1px solid grey;">
+				<span style="margin:5px; ">Console</span>
+				<br>
+				<button onclick="sendRunRequest()">run code</button>
+			</div>
+			<div style="width:100%; background-color: #222222; height: 50px;">
+				<span style="margin:5px;">Files</span>
+				<br>
+			</div>
+		</div>
+		<div id="bottom">
+			<div id="output">
+				<div id="console"></div>
+			</div>
+			<div id="fileSystem">
+				<span id="list"></span>
+			</div>
+		</div>
+	</div>
+	<script src="./users.js"></script>
+
+	<script>
+		let key = document.cookie.split("key=")[1];
+		checkLogin(key, "./loginSite");
+		var require = { paths: { vs: '../monaco-editor/min/vs' } };
+	</script>
+	<script src="./monaco-editor/min/vs/loader.js"></script>
+	<script src="./monaco-editor/min/vs/editor/editor.main.nls.js"></script>
+	<script src="./monaco-editor/min/vs/editor/editor.main.js"></script>
+	<script src="./notifications.js"></script>
+	<script src="./history.js"></script>
+	<script>
+		let editor;
+		(function () {
+			// resize the canvas to fill browser window dynamically
+			window.addEventListener('resize', resizeEditor, false);
+			editor = monaco.editor.create(document.getElementById('container'), {
+			language: 'java',
+			theme: 'vs-dark'
+		});
+			function resizeEditor() {
+				let temp = document.getElementById("container").getBoundingClientRect();
+				editor.layout({ "height": temp.height - 2, "width": temp.width - 2 });
+			}
+
+			resizeEditor();
+		})();
+		getUsers();
+	</script>
+</body>
+
+</html>

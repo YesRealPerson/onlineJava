@@ -1,7 +1,7 @@
 body{
     overflow: hidden;
 }
-body, button{
+body, button, #adminPanel *{
     background-color: #1e1e1e;
     font-family: Consolas, "Courier New", monospace;
     font-weight: normal;
@@ -11,6 +11,9 @@ body, button{
     line-height: 19px;
     letter-spacing: 0px;
     color: #ffffff;
+}
+#adminPanel input{
+    width:100%;
 }
 hr{
     margin: 0;
