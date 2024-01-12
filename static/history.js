@@ -6,6 +6,8 @@ let user = "";
 let lastCode = "";
 const index = document.getElementById("historyIndex");
 let history = {};
+let timings = [];
+const timer = document.getElementById("time");
 
 const getUsers = async () => {
     if (auth != undefined && auth != "") {
@@ -99,6 +101,8 @@ const getJSON = async (filename) => {
         });
         if (response.status == 200) {
             let log = JSON.parse(await response.text());
+            lastCode = log.lastCode;
+            timings = log.majorChangesTime;
             document.getElementById("changes").innerHTML = log.history.length;
             let majorChanges = log.majorChanges;
             history = majorChanges;
@@ -106,7 +110,7 @@ const getJSON = async (filename) => {
             document.getElementById("changesMajor").innerHTML = majorChangesL;
             index.max = majorChangesL-1;
             index.value = majorChangesL-1;
-            lastCode = log.lastCode;
+            timer.innerHTML = new Date(timings[majorChangesL-1]);
         } else {
             console.error(await response.text())
         }
@@ -156,6 +160,7 @@ const sendCompileRequest = async () => {
 
 const createChange = async () => {
     editor.getModel().setValue(history[index.value]);
+    timer.innerHTML = new Date(timings[index.value]);
 }
 
 select.addEventListener("change", setup);
