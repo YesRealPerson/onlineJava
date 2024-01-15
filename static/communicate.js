@@ -1,5 +1,7 @@
 let running = false;
 let currentFile = "";
+const consoleElement = document.getElementById("console")
+
 const updateHash = async () => {
     let auth = document.cookie.split("key=")[1];
     if (auth != undefined && auth != "") {
@@ -21,6 +23,7 @@ const sendRunRequest = async () => {
         if (!running) {
             makeNotification("Sent run request!", 1500);
             running = true;
+            consoleElement.innerText = "Running!"
             const response = await fetch("./run", {
                 method: 'POST',
                 headers: {
@@ -28,7 +31,7 @@ const sendRunRequest = async () => {
                 },
                 body: editor.getValue()
             })
-            document.getElementById("console").innerText = await response.text()
+            consoleElement.innerText = await response.text()
             readFiles();
             running = false;
             updateHash();
@@ -43,6 +46,7 @@ const sendCompileRequest = async () => {
     let auth = document.cookie.split("key=")[1];
     if (auth != undefined && auth != "") {
         makeNotification("Sent compile request!", 1500);
+        consoleElement.innerText = "Compiling!";
         const response = await fetch("./compile", {
             method: 'POST',
             headers: {

@@ -19,11 +19,12 @@ app.use(express.static('./static', { extensions: ['html'] }));
 
 const checkTime = async (worker) => {
     await new Promise(r => setTimeout(r, 1500));
-    if (worker.threadId != -1) {
-        worker.terminate();
+    try {
+        // worker.terminate();
         return true;
+    } catch {
+        return false;
     }
-    return false;
 }
 
 const checksum = async (message) => {
@@ -98,6 +99,8 @@ function checkEvil(code) {
         beingNaughty = "What are you even importing these packages for? Don't please. :)";
     } else if (code.length > 15000) {
         beingNaughty = "Please do not make files greater than 15,000 characters long..."
+    } else if (code.indexOf(".exec(") != -1) {
+        beingNaughty = "Please do not try to run any console commands."
     }
     return beingNaughty;
 }
@@ -217,17 +220,33 @@ app.post("/run", async (req, res) => {
                                     let worker = new Worker("./runJava.js", {
                                         "env": { "filename": user + "/" + filename },
                                     });
+                                    let terminated = false;
                                     worker.on("message", async data => {
                                         res.status(200).send(data);
                                         worker.terminate();
+                                        terminated = true;
                                     });
                                     worker.on("error", async data => {
-                                        res.status(400).send(data);
-                                        worker.terminate();
+                                        try {
+                                            code = data.code;
+                                            message = data.stderr;
+                                            if(code == "ERR_CHILD_PROCESS_STDIO_MAXBUFFER"){
+                                                code = "ERR_PROCESS_STDIO_MAXBUFFER"
+                                                message = "Output too long! Max buffer is 16384 bytes, please reduce output or increase limit!\nOutput so far:\n"+data.stdout
+                                            }else if(code == null){
+                                                code = "ERR_PROCESS_TIMEOUT"
+                                                message = "Either your code is taking too long to run or there was an internal error. Please check your code for any infinite loops.";
+                                            }
+                                            res.status(400).send(`Code: ${code}\nMessage: ${message}`);
+                                            worker.terminate();
+                                            terminated = true;
+                                        } catch (err) {
+                                            res.status(500).send(err);
+                                        }
                                     });
-                                    if (await checkTime(worker)) {
-                                        res.status(400).send("Infinite loop detected! Please check your code!\nOr your code is taking too long to run...");
-                                    }
+                                    // if (await checkTime(worker) && !terminated) {
+                                    //     res.status(400).send("Infinite loop detected! Please check your code!\nOr your code is taking too long to run...");
+                                    // }
                                 }
                             })
                         } else {
