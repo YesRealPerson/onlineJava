@@ -1,3 +1,4 @@
+let fetching = false;
 let running = false;
 let currentFile = "";
 const consoleElement = document.getElementById("console")
@@ -17,6 +18,7 @@ const updateHash = async () => {
         console.error("No authorization key!");
     }
 }
+
 const sendRunRequest = async () => {
     let auth = document.cookie.split("key=")[1];
     if (auth != undefined && auth != "") {
@@ -42,11 +44,16 @@ const sendRunRequest = async () => {
         console.error("No authorization key!");
     }
 }
-const sendCompileRequest = async () => {
+const sendCompileRequest = async (silent) => {
+    if(silent == undefined){ // Checking if its undefined or something else for some reason.
+        silent = false;
+    }
     let auth = document.cookie.split("key=")[1];
     if (auth != undefined && auth != "") {
-        makeNotification("Sent compile request!", 1500);
-        consoleElement.innerText = "Compiling!";
+        if(!silent){
+            makeNotification("Sent compile request!", 1500);
+            consoleElement.innerText = "Compiling!";
+        }
         const response = await fetch("./compile", {
             method: 'POST',
             headers: {
@@ -54,7 +61,9 @@ const sendCompileRequest = async () => {
             },
             body: editor.getValue()
         })
-        document.getElementById("console").innerText = await response.text()
+        if(!silent){
+            document.getElementById("console").innerText = await response.text()
+        }
         readFiles();
         updateHash();
     } else {
@@ -63,10 +72,13 @@ const sendCompileRequest = async () => {
 }
 
 const getFile = async (filename) => {
+    if(!fetching){
     let auth = document.cookie.split("key=")[1];
     if (auth != undefined && auth != "") {
         if (currentFile != filename) {
+            fetching = true;
             makeNotification(`Fetching ${filename}!`, 1500);
+            await sendCompileRequest(true);
             let response = await fetch("./readfile?name=" + filename, {
                 method: 'GET',
                 headers: {
@@ -93,6 +105,7 @@ const getFile = async (filename) => {
                 currentFile = "Main";
                 readFiles();
             }
+            fetching = false;
         }
         else {
             makeNotification("This file is already loaded!", 1500);
@@ -100,6 +113,9 @@ const getFile = async (filename) => {
     } else {
         console.error("No authorization key!");
     }
+}else{
+    makeNotification("Please wait!", 1500);
+}
 }
 
 const readFiles = async () => {

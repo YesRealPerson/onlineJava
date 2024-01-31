@@ -1,7 +1,7 @@
 try {
     const { parentPort } = require("worker_threads");
     const util = require('util');
-    const exec = util.promisify(require("child_process").execFile)
+    const exec = util.promisify(require("child_process").execFile);
     const path = require("path");
     let filename = process.env.filename;
     let runPath = path.join(__dirname, `/Users/${filename.split("/")[0]}/`)
@@ -16,7 +16,7 @@ try {
             let { stdout, stderr } = await exec(("java"), [filename], {
                 cwd: runPath,
                 maxBuffer: maxBuffer,
-                timeout: 2500,
+                timeout: 5000,
             })
             parentPort.postMessage("Output:\n"+stdout + "\nErrors:\n" + stderr);
         } else {
