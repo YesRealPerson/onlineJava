@@ -1,16 +1,17 @@
 const env = require('dotenv');
-const http = require('http');
+const https = require('https');
 const express = require('express');
 const fs = require('fs')
 const { Worker } = require("worker_threads");
 const { createHmac } = require('node:crypto');
 
-
 env.config();
 
+const key = fs.readFileSync('./key.pem');
+const cert = fs.readFileSync('./cert.pem');
 const allowedUsers = process.env.ALLOWED_USERS.split(",");
 const app = express();
-const server = http.createServer(app);
+const server = https.createServer({ key: key, cert: cert }, app);
 const re = new RegExp("^[_A-z]((-|\s)*[_A-z0-9])*$");
 
 app.use(express.static('./static', { extensions: ['html'] }));
@@ -717,5 +718,5 @@ app.post("/runAdmin", async (req, res) => {
     }
 });
 
-server.listen(80);
+server.listen(443);
 console.log("Now Listening");

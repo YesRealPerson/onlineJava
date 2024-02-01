@@ -13,7 +13,7 @@ const updateHash = async () => {
             },
             body: editor.getValue()
         })
-        console.log(await response.text());
+        return response.status;
     } else {
         console.error("No authorization key!");
     }
@@ -45,12 +45,12 @@ const sendRunRequest = async () => {
     }
 }
 const sendCompileRequest = async (silent) => {
-    if(silent == undefined){ // Checking if its undefined or something else for some reason.
+    if (silent == undefined) { // Checking if its undefined or something else for some reason.
         silent = false;
     }
     let auth = document.cookie.split("key=")[1];
     if (auth != undefined && auth != "") {
-        if(!silent){
+        if (!silent) {
             makeNotification("Sent compile request!", 1500);
             consoleElement.innerText = "Compiling!";
         }
@@ -61,7 +61,7 @@ const sendCompileRequest = async (silent) => {
             },
             body: editor.getValue()
         })
-        if(!silent){
+        if (!silent) {
             document.getElementById("console").innerText = await response.text()
         }
         readFiles();
@@ -72,50 +72,56 @@ const sendCompileRequest = async (silent) => {
 }
 
 const getFile = async (filename) => {
-    if(!fetching){
-    let auth = document.cookie.split("key=")[1];
-    if (auth != undefined && auth != "") {
-        if (currentFile != filename) {
-            fetching = true;
-            makeNotification(`Fetching ${filename}!`, 1500);
-            await sendCompileRequest(true);
-            let response = await fetch("./readfile?name=" + filename, {
-                method: 'GET',
-                headers: {
-                    "Authorization": document.cookie.split("key=")[1]
-                },
-            });
-            if (response.status == 200) {
-                editor.getModel().setValue(await response.text());
-                currentFile = filename;
-            } else {
-                await fetch("./makefile?name=" + "Main", {
-                    method: 'POST',
-                    headers: {
-                        "Authorization": document.cookie.split("key=")[1]
-                    },
-                });
-                response = await fetch("./readfile?name=" + "Main", {
+    if (!fetching) {
+        let auth = document.cookie.split("key=")[1];
+        if (auth != undefined && auth != "") {
+            if (currentFile != filename) {
+                if(currentFile == ""){
+                    currentFile = filename;
+                }
+                fetching = true;
+                makeNotification(`Fetching ${filename}!`, 1500);
+                let updated = await updateHash();
+                if(updated != 400){
+                    await sendCompileRequest(true);
+                }
+                let response = await fetch("./readfile?name=" + filename, {
                     method: 'GET',
                     headers: {
                         "Authorization": document.cookie.split("key=")[1]
                     },
                 });
-                editor.getModel().setValue(await response.text());
-                currentFile = "Main";
-                readFiles();
+                if (response.status == 200) {
+                    editor.getModel().setValue(await response.text());
+                    currentFile = filename;
+                } else {
+                    await fetch("./makefile?name=" + "Main", {
+                        method: 'POST',
+                        headers: {
+                            "Authorization": document.cookie.split("key=")[1]
+                        },
+                    });
+                    response = await fetch("./readfile?name=" + "Main", {
+                        method: 'GET',
+                        headers: {
+                            "Authorization": document.cookie.split("key=")[1]
+                        },
+                    });
+                    editor.getModel().setValue(await response.text());
+                    currentFile = "Main";
+                    readFiles();
+                }
+                fetching = false;
             }
-            fetching = false;
-        }
-        else {
-            makeNotification("This file is already loaded!", 1500);
+            else {
+                makeNotification("This file is already loaded!", 1500);
+            }
+        } else {
+            console.error("No authorization key!");
         }
     } else {
-        console.error("No authorization key!");
+        makeNotification("Please wait!", 1500);
     }
-}else{
-    makeNotification("Please wait!", 1500);
-}
 }
 
 const readFiles = async () => {
@@ -161,7 +167,9 @@ const deleteRequest = async () => {
             getFile("Main");
             readFiles();
         } else {
-            makeNotification("You cannot delete 'Main'!", 1500);
+            if(currentFile == "Main"){
+                makeNotification("You cannot delete 'Main'!", 1500);
+            }
         }
     } else {
         console.error("No authorization key!");
