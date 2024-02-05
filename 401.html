@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <style>
+        body{
+            margin: 0;
+            top: 0;
+            left: 0;
+            padding: 0;
+            width: 100%;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background-color: #1e1e1e;
+            font-family: Consolas, "Courier New", monospace;
+            color: white;
+            text-align: center;
+        }
+        h1{
+            font-size: 6vh;
+        }
+        h2{
+            font-size: 4vh;
+        }
+    </style>
+    <script>
+        const start = async () => {
+            for(let i = 5; i >= 0; i--){
+                document.getElementById("seconds").innerText = i;
+                await new Promise(r => setTimeout(r, 1000));
+            }
+            window.location = "./";
+        }
+    </script>
+    <meta http-equiv="Content-Type" content="text/html;charset=utf-8" />
+</head>
+
+<body>
+    <div>
+    <h1>401: You are not allowed to view this resource!</h1><br>
+    <h2>You will be automatically redirected in <span id="seconds">5</span> seconds.</h2>
+</div>
+</body>
+
+<script>
+    start();
+</script>
+
+</html>

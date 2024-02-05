@@ -21,7 +21,3 @@ Open 'localhost' in any web browser and your local ip for any other machine on t
 To add a file to all users, add the file to the 'toSpread' folder then edit the 'filename' variable in 'spread.js' (omit the .java extension), then run the program.
 
 'spread.js' will pass over users who already have a file with that name, be sure to add the file manually to those folders.
-
-# Important notes
-
-This server runs on HTTP with BASIC authentication! You may want to change this to HTTPS if you do not trust your users!

@@ -16,9 +16,9 @@ try {
             let { stdout, stderr } = await exec(("java"), [filename], {
                 cwd: runPath,
                 maxBuffer: maxBuffer,
-                timeout: 5000,
+                timeout: 1500,
             })
-            parentPort.postMessage("Output:\n"+stdout + "\nErrors:\n" + stderr);
+            parentPort.postMessage(stdout + "\n" + stderr);
         } else {
             parentPort.postMessage("Failed to compile!\n" + compileOut + "\n" + compileErr);
         }

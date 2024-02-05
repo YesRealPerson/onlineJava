@@ -56,6 +56,9 @@ const readFiles = async () => {
 }
 
 const setup = async () => {
+    if(user == "undefined"){
+        select.firstElementChild.remove();
+    }
     user = select.value;
     if (user != "undefined") {
         try {

@@ -16,17 +16,12 @@ const re = new RegExp("^[_A-z]((-|\s)*[_A-z0-9])*$");
 
 app.use(express.static('./static', { extensions: ['html'] }));
 
-// Helper functions
+process.on('uncaughtException', function (err) {
+    let time = new Date().toString().replace(/T/, ':').replace(/\.\w*/, '');
+    console.log(time + ": " + err);
+});
 
-const checkTime = async (worker) => {
-    await new Promise(r => setTimeout(r, 1500));
-    try {
-        // worker.terminate();
-        return true;
-    } catch {
-        return false;
-    }
-}
+// Helper functions
 
 const checksum = async (message) => {
     let hash = createHmac('sha256', message).digest('base64');
@@ -132,6 +127,24 @@ const checkAdmin = async (req) => {
     })
 }
 
+const getUser = async (auth) => {
+    return new Promise((res, rej) => {
+        fs.readFile("users.json", (err, data) => {
+            if (err) {
+                rej(err);
+            }
+            else {
+                try {
+                    let users = JSON.parse("" + data);
+                    res(users[auth].email.split("@")[0]);
+                } catch (err) {
+                    rej(err);
+                }
+            }
+        })
+    });
+}
+
 // App functions
 
 app.use(function (req, res, next) {
@@ -151,119 +164,122 @@ app.use(function (req, res, next) {
     }
 });
 
+// POST 
+
 app.post("/compile", async (req, res) => {
-    try {
-        let code = req.body;
-        let beingNaughty = checkEvil(code);
-        if (beingNaughty == "") {
-            fs.readFile("users.json", async (err, haha) => {
-                if (err) {
-                    res.status(500).send(err);
-                } else {
-                    let users = JSON.parse("" + haha);
-                    let user = users[req.headers.authorization].email.split("@")[0]
-                    let filename = code.split("{")[0].trim().split(" ");
-                    filename = filename[filename.length - 1];
-                    if (re.test(filename)) {
-                        if (fs.existsSync(`./Users/${user}/${filename}.java`)) {
-                            fs.writeFile(`./Users/${user}/${filename}.java`, code, async (err) => {
-                                if (err) {
-                                    res.status(500).send(err);
-                                } else {
-                                    let worker = new Worker("./compileJava.js", {
-                                        "env": { "filename": user + "/" + filename }
-                                    });
-                                    worker.on("message", async data => {
-                                        res.status(200).send(data);
-                                        worker.terminate();
-                                    });
-                                    worker.on("error", async data => {
-                                        res.status(400).send(data);
-                                        worker.terminate();
-                                    });
-                                }
-                            })
-                        } else {
-                            res.status(400).send("This class file does not exist!")
-                        }
+    let code = req.body;
+    let beingNaughty = checkEvil(code);
+    if (beingNaughty == "") {
+        let user = await getUser(req.headers.authorization);
+        let filename = code.split("{")[0].trim().split(" ");
+        filename = filename[filename.length - 1];
+        if (re.test(filename)) {
+            if (fs.existsSync(`./Users/${user}/${filename}.java`)) {
+                fs.writeFile(`./Users/${user}/${filename}.java`, code, async (err) => {
+                    if (err) {
+                        res.status(500).send(err);
                     } else {
-                        res.status(400).send("Invalid class name!")
+                        let worker = new Worker("./compileJava.js", {
+                            "env": { "filename": user + "/" + filename }
+                        });
+                        worker.on("message", async data => {
+                            res.status(200).send(data);
+                            worker.terminate();
+                        });
+                        worker.on("error", async data => {
+                            res.status(400).send(data);
+                            worker.terminate();
+                        });
                     }
-                }
-            })
+                })
+            } else {
+                res.status(400).send("This class file does not exist!")
+            }
         } else {
-            res.status(400).send(beingNaughty);
+            res.status(400).send("Invalid class name!")
         }
-    } catch (err) {
-        res.status(500).send(err)
+    } else {
+        res.status(400).send(beingNaughty);
     }
 })
 
 app.post("/run", async (req, res) => {
-    try {
-        let code = req.body;
-        let beingNaughty = checkEvil(code);
-        if (beingNaughty == "") {
-            fs.readFile("users.json", async (err, haha) => {
-                if (err) {
-                    res.status(500).send(err);
-                } else {
-                    let users = JSON.parse("" + haha);
-                    let user = users[req.headers.authorization].email.split("@")[0]
-                    let filename = code.split("{")[0].trim().split(" ");
-                    filename = filename[filename.length - 1];
-                    if (re.test(filename)) {
-                        if (fs.existsSync(`./Users/${user}/${filename}.java`)) {
-                            fs.writeFile(`./Users/${user}/${filename}.java`, code, async (err) => {
-                                if (err) {
-                                    res.status(500).send(err);
-                                } else {
-                                    let worker = new Worker("./runJava.js", {
-                                        "env": { "filename": user + "/" + filename },
-                                    });
-                                    let terminated = false;
-                                    worker.on("message", async data => {
-                                        res.status(200).send(data);
-                                        worker.terminate();
-                                        terminated = true;
-                                    });
-                                    worker.on("error", async data => {
-                                        try {
-                                            code = data.code;
-                                            message = data.stderr;
-                                            if(code == "ERR_CHILD_PROCESS_STDIO_MAXBUFFER"){
-                                                code = "ERR_PROCESS_STDIO_MAXBUFFER"
-                                                message = "Output too long! Max buffer is 16384 bytes, please reduce output or increase limit!\nOutput so far:\n"+data.stdout
-                                            }else if(code == null){
-                                                code = "ERR_PROCESS_TIMEOUT"
-                                                message = "Either your code is taking too long to run or there was an internal error. Please check your code for any infinite loops.";
-                                            }
-                                            res.status(400).send(`Code: ${code}\nMessage: ${message}`);
-                                            worker.terminate();
-                                            terminated = true;
-                                        } catch (err) {
-                                            res.status(500).send(err);
-                                        }
-                                    });
-                                    // if (await checkTime(worker) && !terminated) {
-                                    //     res.status(400).send("Infinite loop detected! Please check your code!\nOr your code is taking too long to run...");
-                                    // }
-                                }
-                            })
-                        } else {
-                            res.status(400).send("This class file does not exist!");
-                        }
+    let code = req.body;
+    let beingNaughty = checkEvil(code);
+    if (beingNaughty == "") {
+        let user = await getUser(req.headers.authorization);
+        let filename = code.split("{")[0].trim().split(" ");
+        filename = filename[filename.length - 1];
+        if (re.test(filename)) {
+            if (fs.existsSync(`./Users/${user}/${filename}.java`)) {
+                fs.writeFile(`./Users/${user}/${filename}.java`, code, async (err) => {
+                    if (err) {
+                        res.status(500).send(err);
                     } else {
-                        res.status(400).send("Invalid class name!")
+                        let worker = new Worker("./runJava.js", {
+                            "env": { "filename": user + "/" + filename },
+                        });
+                        worker.on("message", async data => {
+                            res.status(200).send(data);
+                            worker.terminate();
+                            terminated = true;
+                        });
+                        worker.on("error", async data => {
+                            try {
+                                code = data.code;
+                                message = data.stderr;
+                                if (code == "ERR_CHILD_PROCESS_STDIO_MAXBUFFER") {
+                                    code = "ERR_PROCESS_STDIO_MAXBUFFER"
+                                    message = "Output too long! Max buffer is 16384 bytes, please reduce output or increase limit!\nOutput so far:\n" + data.stdout
+                                } else if (code == null) {
+                                    code = "ERR_PROCESS_TIMEOUT"
+                                    message = "Either your code is taking too long to run or there was an internal error. Please check your code for any infinite loops.";
+                                }
+                                res.status(400).send(`Code: ${code}\nMessage: ${message}`);
+                                worker.terminate();
+                                terminated = true;
+                            } catch (err) {
+                                res.status(500).send(err);
+                            }
+                        });
+                        // if (await checkTime(worker) && !terminated) {
+                        //     res.status(400).send("Infinite loop detected! Please check your code!\nOr your code is taking too long to run...");
+                        // }
                     }
-                }
-            })
+                })
+            } else {
+                res.status(400).send("This class file does not exist!");
+            }
         } else {
-            res.status(200).send(beingNaughty)
+            res.status(400).send("Invalid class name!")
         }
-    } catch (err) {
-        res.status(500).send(err)
+    } else {
+        res.status(200).send(beingNaughty)
     }
+});
+
+app.post("/deleteFile", async (req, res) => {
+    let filename = req.query.name;
+    let user = await getUser(req.headers.authorization);
+    fs.unlink(`Users/${user}/${filename}.java`, err => {
+        if (err) {
+            res.status(500).send(err);
+        } else {
+            fs.unlink(`Users/${user}/${filename}.json`, err => {
+                if (err) {
+                    res.status(500).send(err)
+                } else {
+                    fs.unlink(`Users/${user}/${filename}.class`, err => {
+                        if (err) {
+                            res.status(500).send(`Deleted ${filename}.java but failed to delete ${filename}.class`);
+                        } else {
+                            res.status(200).send(`Deleted ${filename}.java & ${filename}.class`);
+                        }
+                    });
+                }
+            });
+        }
+    })
 });
 
 app.post("/login", async (req, res) => {
@@ -338,246 +354,141 @@ app.post("/register", async (req, res) => {
     }
 });
 
-app.get("/readfile", (req, res) => {
-    try {
-        let filename = req.query.name;
-        fs.readFile("users.json", (err, haha) => {
-            if (err) {
-                res.status(500).send(err);
-            } else {
-                let users = JSON.parse("" + haha);
-                let user = users[req.headers.authorization].email.split("@")[0];
-                fs.readFile(`Users/${user}/${filename}.java`, (err, result) => {
+app.post("/updateHash", async (req, res) => {
+    let filename = req.query.name;
+    let user = await getUser(req.headers.authorization);
+    fs.readFile(`Users/${user}/${filename}.json`, async (err, funny) => {
+        if (err) {
+            res.status(500).send(err);
+        } else {
+            let changes = JSON.parse("" + funny);
+            let newCode = "" + req.body;
+            let oldCode = "" + changes.lastCode;
+            let hashes = changes.hashes;
+            let oldhash = hashes[hashes.length - 1];
+            let newhash = await checksum(newCode);
+            if (oldhash != newhash) {
+                let time = Date.now();
+                changes.history.push(time);
+                changes.hashes.push(newhash);
+                changes.lastCode = newCode;
+
+                minLength = oldCode.length;
+                if (minLength > newCode.length) {
+                    minLength = newCode.length;
+                }
+                let percent = await percent_diff(newCode, oldCode);
+                if (percent > 1) {
+                    changes.majorChanges.push(newCode);
+                    changes.majorChangesTime.push(time);
+                }
+                changes = JSON.stringify(changes);
+                fs.writeFile(`Users/${user}/${filename}.json`, changes, err => {
                     if (err) {
-                        res.status(400).send("This file does not exist!");
+                        res.status(500).send(err);
                     }
                     else {
-                        res.status(200).send("" + result);
+                        res.status(200).send("Updated hash!")
+                    }
+                })
+            } else {
+                res.status(400).send("No changes made! (hash is identical)")
+            }
+        }
+    });
+});
+
+// GET
+
+app.get("/readfile", async (req, res) => {
+    let filename = req.query.name;
+    let user = await getUser(req.headers.authorization);
+    fs.readFile(`Users/${user}/${filename}.java`, (err, result) => {
+        if (err) {
+            res.status(400).send("This file does not exist!");
+        }
+        else {
+            res.status(200).send("" + result);
+        }
+    })
+});
+
+app.post("/makefile", async (req, res) => {
+    let filename = req.query.name;
+    let user = await getUser(req.headers.authorization);
+    if (re.test(filename)) {
+        let baseCode = [`class ${filename} {`, '\tpublic static void main(String[] args){', '\t\tSystem.out.println("Hello world!");', '\t}', '}'].join('\n');
+        fs.writeFile(`Users/${user}/${filename}.java`, baseCode, async (err) => {
+            if (err) {
+                res.status(500).send(err);
+            } else {
+                let hash = await checksum(baseCode);
+                let time = Date.now();
+                let changes = {
+                    "history": [time],
+                    "hashes": [hash],
+                    "lastCode": baseCode,
+                    "majorChanges": [baseCode],
+                    "majorChangesTime": [time]
+                }
+                fs.writeFile(`Users/${user}/${filename}.json`, JSON.stringify(changes), err => {
+                    if (err) {
+                        res.status(500).send(err);
+                    } else {
+                        res.sendStatus(200);
                     }
                 })
             }
         })
-    } catch (err) {
-        res.status(500).send(err);
+    } else {
+        res.status(400).send("Invalid class name!")
     }
 });
 
-app.post("/makefile", (req, res) => {
-    try {
-        let filename = req.query.name;
-        fs.readFile("users.json", (err, haha) => {
-            if (err) {
-                res.status(500).send(err);
-            } else {
-                let users = JSON.parse("" + haha);
-                let user = users[req.headers.authorization].email.split("@")[0];
-                if (re.test(filename)) {
-                    let baseCode = [`class ${filename} {`, '\tpublic static void main(String[] args){', '\t\tSystem.out.println("Hello world!");', '\t}', '}'].join('\n');
-                    fs.writeFile(`Users/${user}/${filename}.java`, baseCode, async (err) => {
-                        if (err) {
-                            res.status(500).send(err);
-                        } else {
-                            let hash = await checksum(baseCode);
-                            let time = Date.now();
-                            let changes = {
-                                "history": [time],
-                                "hashes": [hash],
-                                "lastCode": baseCode,
-                                "majorChanges": [baseCode],
-                                "majorChangesTime": [time]
-                            }
-                            fs.writeFile(`Users/${user}/${filename}.json`, JSON.stringify(changes), err => {
-                                if (err) {
-                                    res.status(500).send(err);
-                                } else {
-                                    res.sendStatus(200);
-                                }
-                            })
-                        }
-                    })
-                } else {
-                    res.status(400).send("Invalid class name!")
-                }
-            }
-        })
-    } catch (err) {
-        res.status(500).send(err);
-    }
-});
-
-app.get("/filelist", (req, res) => {
-    try {
-        fs.readFile("users.json", (err, haha) => {
-            if (err) {
-                res.status(500).send(err);
-            } else {
-                let users = JSON.parse("" + haha);
-                let user = users[req.headers.authorization].email.split("@")[0];
-                fs.readdir(`Users/${user}/`, (err, files) => {
-                    result = "";
-                    files.forEach(file => {
-                        let temp = file.split(".");
-                        if (temp[temp.length - 1] == "java") {
-                            result += file + ",";
-                        }
-                    });
-                    res.status(200).send(result.substring(0, result.length - 1));
-                });
-            }
-        })
-    } catch (err) {
-        res.status(500).send(err);
-    }
-});
-
-app.post("/deleteFile", (req, res) => {
-    try {
-        let filename = req.query.name;
-        fs.readFile("users.json", (err, haha) => {
-            if (err) {
-                res.status(500).send(err);
-            } else {
-                let users = JSON.parse("" + haha);
-                let user = users[req.headers.authorization].email.split("@")[0];
-                fs.unlink(`Users/${user}/${filename}.java`, err => {
-                    if (err) {
-                        res.status(500).send(err);
-                    } else {
-                        fs.unlink(`Users/${user}/${filename}.json`, err => {
-                            if (err) {
-                                res.status(500).send(err)
-                            } else {
-                                fs.unlink(`Users/${user}/${filename}.class`, err => {
-                                    if (err) {
-                                        res.status(500).send(`Deleted ${filename}.java but failed to delete ${filename}.class`);
-                                    } else {
-                                        res.status(200).send(`Deleted ${filename}.java & ${filename}.class`);
-                                    }
-                                });
-                            }
-                        });
-                    }
-                })
+app.get("/filelist", async (req, res) => {
+    let user = await getUser(req.headers.authorization);
+    fs.readdir(`Users/${user}/`, (err, files) => {
+        result = "";
+        files.forEach(file => {
+            let temp = file.split(".");
+            if (temp[temp.length - 1] == "java") {
+                result += file + ",";
             }
         });
-    } catch (err) {
-        res.status(500).send(err);
+        res.status(200).send(result.substring(0, result.length - 1));
+    });
+});
+
+// ADMIN FUNCTIONS
+
+// GET
+
+app.get("/serveHistory", async (req, res) => {
+    let admin = (await checkAdmin(req))==200;
+    if (admin) {
+        res.sendFile("historyViewer.html", { root: __dirname });
+    } else {
+        res.status(401).sendFile("401.html", { root: __dirname });
     }
 });
 
-app.post("/updateHash", (req, res) => {
-    try {
-        let filename = req.query.name;
-        fs.readFile("users.json", (err, haha) => {
+app.get("/users", async (req, res) => {
+    let admin = (await checkAdmin(req))==200;
+    if (admin) {
+        fs.readdir("Users/", (err, files) => {
             if (err) {
                 res.status(500).send(err);
             } else {
-                let users = JSON.parse("" + haha);
-                let user = users[req.headers.authorization].email.split("@")[0];
-                fs.readFile(`Users/${user}/${filename}.json`, async (err, funny) => {
-                    if (err) {
-                        res.status(500).send(err);
-                    } else {
-                        let changes = JSON.parse("" + funny);
-                        let newCode = "" + req.body;
-                        let oldCode = "" + changes.lastCode;
-                        let hashes = changes.hashes;
-                        let oldhash = hashes[hashes.length - 1];
-                        let newhash = await checksum(newCode);
-                        if (oldhash != newhash) {
-                            let time = Date.now();
-                            changes.history.push(time);
-                            changes.hashes.push(newhash);
-                            changes.lastCode = newCode;
-
-                            minLength = oldCode.length;
-                            if (minLength > newCode.length) {
-                                minLength = newCode.length;
-                            }
-                            let percent = await percent_diff(newCode, oldCode);
-                            if (percent > 1) {
-                                changes.majorChanges.push(newCode);
-                                changes.majorChangesTime.push(time);
-                            }
-                            changes = JSON.stringify(changes);
-                            fs.writeFile(`Users/${user}/${filename}.json`, changes, err => {
-                                if (err) {
-                                    res.status(500).send(err);
-                                }
-                                else {
-                                    res.status(200).send("Updated hash!")
-                                }
-                            })
-                        } else {
-                            res.status(400).send("No changes made! (hash is identical)")
-                        }
-                    }
-                });
+                res.status(200).send("" + files);
             }
         });
-    } catch (err) {
-        res.status(500).send(err);
-    }
-});
-
-app.get("/serveHistory", (req, res) => {
-    try {
-        if (req.headers.authorization != undefined) {
-            fs.readFile("users.json", (err, data) => {
-                if (err) {
-                    res.status(500).send(err);
-                } else {
-                    let users = JSON.parse("" + data);
-                    let admin = users[req.headers.authorization].admin;
-                    if (admin) {
-                        res.sendFile("historyViewer.html", { root: __dirname });
-                    } else {
-                        res.status(401).send("You are not authorized to view this page!");
-                    }
-                }
-            });
-        } else {
-            res.status(400).send("No authorization header!");
-        }
-    } catch (err) {
-        res.status(500).send(err);
-    }
-});
-
-app.get("/users", (req, res) => {
-    try {
-        if (req.headers.authorization != undefined) {
-            fs.readFile("users.json", (err, data) => {
-                if (err) {
-                    res.status(500).send(err);
-                } else {
-                    let users = JSON.parse("" + data);
-                    let admin = users[req.headers.authorization].admin;
-                    if (admin) {
-                        fs.readdir("Users/", (err, files) => {
-                            if (err) {
-                                res.status(500).send(err);
-                            } else {
-                                res.status(200).send("" + files);
-                            }
-                        });
-                    } else {
-                        res.status(401).send("You are not authorized to view this page!");
-                    }
-                }
-            });
-        } else {
-            res.status(400).send("No authorization header!");
-        }
-    } catch (err) {
-        res.status(500).send(err);
+    } else {
+        res.status(401).send("You are not authorized to view this page!");
     }
 });
 
 app.get("/filelistAdmin", async (req, res) => {
-    try {
-        let authorized = await checkAdmin(req);
-        let admin = authorized == 200;
+        let admin = (await checkAdmin(req))==200;
         if (admin) {
             let user = req.query.user;
             fs.readdir(`Users/${user}/`, (err, files) => {
@@ -594,15 +505,10 @@ app.get("/filelistAdmin", async (req, res) => {
             console.log(authorized);
             res.sendStatus(authorized);
         }
-    } catch (err) {
-        res.status(500).send(err);
-    }
 });
 
 app.get("/readfileAdmin", async (req, res) => {
-    try {
-        let authorized = await checkAdmin(req);
-        let admin = authorized == 200;
+        let admin = (await checkAdmin(req))==200;
         if (admin) {
             let filename = req.query.name;
             let user = req.query.user;
@@ -618,15 +524,12 @@ app.get("/readfileAdmin", async (req, res) => {
         } else {
             res.sendStatus(authorized);
         }
-    } catch (err) {
-        res.status(500).send(err);
-    }
 });
 
+// POST
+
 app.post("/compileAdmin", async (req, res) => {
-    try {
-        let authorized = await checkAdmin(req);
-        let admin = authorized == 200;
+        let admin = (await checkAdmin(req))==200;
         if (admin) {
             let code = req.body;
             let beingNaughty = checkEvil(code);
@@ -664,15 +567,10 @@ app.post("/compileAdmin", async (req, res) => {
         } else {
             res.sendStatus(authorized);
         }
-    } catch (err) {
-        res.status(500).send(err);
-    }
 })
 
 app.post("/runAdmin", async (req, res) => {
-    try {
-        let authorized = await checkAdmin(req);
-        let admin = authorized == 200;
+        let admin = (await checkAdmin(req))==200;
         if (admin) {
             let code = req.body;
             let beingNaughty = checkEvil(code);
@@ -696,9 +594,6 @@ app.post("/runAdmin", async (req, res) => {
                                     res.status(400).send(data);
                                     worker.terminate();
                                 });
-                                if (await checkTime(worker)) {
-                                    res.status(400).send("Infinite loop detected! Please check your code!\nOr your code is taking too long to run...");
-                                }
                             }
                         })
                     } else {
@@ -713,9 +608,6 @@ app.post("/runAdmin", async (req, res) => {
         } else {
             res.sendStatus(authorized);
         }
-    } catch (err) {
-        res.status(500).send(err);
-    }
 });
 
 server.listen(443);
