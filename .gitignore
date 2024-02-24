@@ -2,3 +2,5 @@ monaco-editor
 Users/*
 users.json
 .env
+test.*
+monaco-collab-ext

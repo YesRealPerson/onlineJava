@@ -136,3 +136,13 @@ a:hover{
 a:active{
     color: aqua;
 }
+
+#fileSystem{
+    display: grid;
+    grid-template-rows: 50% 50%;
+}
+
+#fileSystem > * {
+    border-bottom: 1px grey solid;
+    overflow: scroll;
+}

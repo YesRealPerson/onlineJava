@@ -464,7 +464,7 @@ app.get("/filelist", async (req, res) => {
 // GET
 
 app.get("/serveHistory", async (req, res) => {
-    let admin = (await checkAdmin(req))==200;
+    let admin = (await checkAdmin(req)) == 200;
     if (admin) {
         res.sendFile("historyViewer.html", { root: __dirname });
     } else {
@@ -473,7 +473,7 @@ app.get("/serveHistory", async (req, res) => {
 });
 
 app.get("/users", async (req, res) => {
-    let admin = (await checkAdmin(req))==200;
+    let admin = (await checkAdmin(req)) == 200;
     if (admin) {
         fs.readdir("Users/", (err, files) => {
             if (err) {
@@ -488,126 +488,293 @@ app.get("/users", async (req, res) => {
 });
 
 app.get("/filelistAdmin", async (req, res) => {
-        let admin = (await checkAdmin(req))==200;
-        if (admin) {
-            let user = req.query.user;
-            fs.readdir(`Users/${user}/`, (err, files) => {
-                result = "";
-                files.forEach(file => {
-                    let temp = file.split(".");
-                    if (temp[temp.length - 1] == "java") {
-                        result += file + ",";
-                    }
-                });
-                res.status(200).send(result.substring(0, result.length - 1));
+    let admin = (await checkAdmin(req)) == 200;
+    if (admin) {
+        let user = req.query.user;
+        fs.readdir(`Users/${user}/`, (err, files) => {
+            result = "";
+            files.forEach(file => {
+                let temp = file.split(".");
+                if (temp[temp.length - 1] == "java") {
+                    result += file + ",";
+                }
             });
-        } else {
-            console.log(authorized);
-            res.sendStatus(authorized);
-        }
+            res.status(200).send(result.substring(0, result.length - 1));
+        });
+    } else {
+        console.log(authorized);
+        res.sendStatus(authorized);
+    }
 });
 
 app.get("/readfileAdmin", async (req, res) => {
-        let admin = (await checkAdmin(req))==200;
-        if (admin) {
-            let filename = req.query.name;
-            let user = req.query.user;
-            let extension = req.query.extension;
-            fs.readFile(`Users/${user}/${filename}${extension}`, (err, result) => {
-                if (err) {
-                    res.status(400).send("This file does not exist!");
-                }
-                else {
-                    res.status(200).send("" + result);
-                }
-            })
-        } else {
-            res.sendStatus(authorized);
-        }
+    let admin = (await checkAdmin(req)) == 200;
+    if (admin) {
+        let filename = req.query.name;
+        let user = req.query.user;
+        let extension = req.query.extension;
+        fs.readFile(`Users/${user}/${filename}${extension}`, (err, result) => {
+            if (err) {
+                res.status(400).send("This file does not exist!");
+            }
+            else {
+                res.status(200).send("" + result);
+            }
+        })
+    } else {
+        res.sendStatus(authorized);
+    }
 });
 
 // POST
 
 app.post("/compileAdmin", async (req, res) => {
-        let admin = (await checkAdmin(req))==200;
-        if (admin) {
-            let code = req.body;
-            let beingNaughty = checkEvil(code);
-            if (beingNaughty == "") {
-                let user = req.query.user;
-                let filename = req.query.name;
-                if (re.test(filename)) {
-                    if (fs.existsSync(`./Users/${user}/${filename}.java`)) {
-                        fs.writeFile(`./Users/${user}/${filename}.java`, code, async (err) => {
-                            if (err) {
-                                res.status(500).send(err);
-                            } else {
-                                let worker = new Worker("./compileJava.js", {
-                                    "env": { "filename": user + "/" + filename }
-                                });
-                                worker.on("message", async data => {
-                                    res.status(200).send(data);
-                                    worker.terminate();
-                                });
-                                worker.on("error", async data => {
-                                    res.status(400).send(data);
-                                    worker.terminate();
-                                });
-                            }
-                        })
-                    } else {
-                        res.status(400).send("This class file does not exist!")
-                    }
+    let admin = (await checkAdmin(req)) == 200;
+    if (admin) {
+        let code = req.body;
+        let beingNaughty = checkEvil(code);
+        if (beingNaughty == "") {
+            let user = req.query.user;
+            let filename = req.query.name;
+            if (re.test(filename)) {
+                if (fs.existsSync(`./Users/${user}/${filename}.java`)) {
+                    fs.writeFile(`./Users/${user}/${filename}.java`, code, async (err) => {
+                        if (err) {
+                            res.status(500).send(err);
+                        } else {
+                            let worker = new Worker("./compileJava.js", {
+                                "env": { "filename": user + "/" + filename }
+                            });
+                            worker.on("message", async data => {
+                                res.status(200).send(data);
+                                worker.terminate();
+                            });
+                            worker.on("error", async data => {
+                                res.status(400).send(data);
+                                worker.terminate();
+                            });
+                        }
+                    })
                 } else {
-                    res.status(400).send("Invalid class name!")
+                    res.status(400).send("This class file does not exist!")
                 }
             } else {
-                res.status(400).send(beingNaughty);
+                res.status(400).send("Invalid class name!")
             }
         } else {
-            res.sendStatus(authorized);
+            res.status(400).send(beingNaughty);
         }
+    } else {
+        res.sendStatus(authorized);
+    }
 })
 
 app.post("/runAdmin", async (req, res) => {
-        let admin = (await checkAdmin(req))==200;
-        if (admin) {
-            let code = req.body;
-            let beingNaughty = checkEvil(code);
-            if (beingNaughty == "") {
-                let user = req.query.user;
-                let filename = req.query.name;
-                if (re.test(filename)) {
-                    if (fs.existsSync(`./Users/${user}/${filename}.java`)) {
-                        fs.writeFile(`./Users/${user}/${filename}.java`, code, async (err) => {
-                            if (err) {
-                                res.status(500).send(err);
-                            } else {
-                                let worker = new Worker("./runJava.js", {
-                                    "env": { "filename": user + "/" + filename }
-                                });
-                                worker.on("message", async data => {
-                                    res.status(200).send(data);
-                                    worker.terminate();
-                                });
-                                worker.on("error", async data => {
-                                    res.status(400).send(data);
-                                    worker.terminate();
-                                });
-                            }
-                        })
-                    } else {
-                        res.status(400).send("This class file does not exist!")
-                    }
+    let admin = (await checkAdmin(req)) == 200;
+    if (admin) {
+        let code = req.body;
+        let beingNaughty = checkEvil(code);
+        if (beingNaughty == "") {
+            let user = req.query.user;
+            let filename = req.query.name;
+            if (re.test(filename)) {
+                if (fs.existsSync(`./Users/${user}/${filename}.java`)) {
+                    fs.writeFile(`./Users/${user}/${filename}.java`, code, async (err) => {
+                        if (err) {
+                            res.status(500).send(err);
+                        } else {
+                            let worker = new Worker("./runJava.js", {
+                                "env": { "filename": user + "/" + filename }
+                            });
+                            worker.on("message", async data => {
+                                res.status(200).send(data);
+                                worker.terminate();
+                            });
+                            worker.on("error", async data => {
+                                res.status(400).send(data);
+                                worker.terminate();
+                            });
+                        }
+                    })
                 } else {
-                    res.status(400).send("Invalid class name!")
+                    res.status(400).send("This class file does not exist!")
                 }
             } else {
-                res.status(400).send(beingNaughty);
+                res.status(400).send("Invalid class name!")
             }
         } else {
-            res.sendStatus(authorized);
+            res.status(400).send(beingNaughty);
         }
+    } else {
+        res.sendStatus(authorized);
+    }
+});
+
+// WEBSOCKETS
+
+const WebSocket = require("ws");
+
+const wss = new WebSocket.WebSocketServer({ server: server });
+
+let openFiles = {}
+
+wss.on('connection', (ws) => {
+    let user = "none";
+    let filePath = "none";
+    let operations = []
+    let isOpen = true;
+
+    // Ask client to send auth through message
+    // Types
+    // 0: Command
+    // 1: Response
+    ws.send(JSON.stringify({ type: 0, data: "SEND_AUTH" }));
+
+    ws.on("message", async message => {
+        message = JSON.parse(message);
+
+        // Recieved Command
+        if (message.type == 0) {
+            let command = message.data;
+
+            // Get File
+            if (command == "GET_FILE") {
+                let file = message.file;
+                filePath = `Users/${user}/${file}.java`
+                fs.readFile(filePath, (err, result) => {
+                    if (err) {
+                        ws.send(JSON.stringify({ type: 1, data: "ERROR", command: "GET_FILE" }))
+                        console.error(err);
+                    }
+                    else {
+                        ws.send(JSON.stringify({ type: 1, data: result, command: "GET_FILE" }));
+                        if (openFiles[filePath] == null) {
+                            openFiles[filePath] = {
+                                text: result,
+                                users: [ws]
+                            };
+                        } else {
+                            openFiles[filePath].users.push(ws);
+                        }
+                    }
+                })
+            }
+
+            // Update Temp
+            else if (command == "UPDATE") {
+                if (filePath != "none") {
+                    operations.push(message);
+                }
+            }
+        }
+
+        // Recieved Response
+        else if (message.type == 1) {
+            let command = message.command;
+
+            // Login and store auth
+            if (command == "SEND_AUTH") {
+                let auth = message.data;
+                try {
+                    user = await getUser(auth);
+                    ws.send(JSON.stringify({ type: 0, data: "LOGIN_OK" }))
+                } catch {
+                    ws.send(JSON.stringify({ type: 0, data: "LOGIN_BAD" }))
+                }
+            }
+        } 
+        
+        // Unknown response
+        else {
+            console.error("Unknown Message Recieved\n" + message);
+        }
+    })
+
+    ws.on("close", () => {
+        fs.readFile(filePath.split(".")[0]+".json", async (err, funny) => {
+            if (!err) {
+                let changes = JSON.parse("" + funny);
+                let newCode = openFiles[filePath].text;
+                let oldCode = "" + changes.lastCode;
+                let hashes = changes.hashes;
+                let oldhash = hashes[hashes.length - 1];
+                let newhash = await checksum(newCode);
+                if (oldhash != newhash) {
+                    let time = Date.now();
+                    changes.history.push(time);
+                    changes.hashes.push(newhash);
+                    changes.lastCode = newCode;
+
+                    minLength = oldCode.length;
+                    if (minLength > newCode.length) {
+                        minLength = newCode.length;
+                    }
+                    let percent = await percent_diff(newCode, oldCode);
+                    if (percent > 1) {
+                        changes.majorChanges.push(newCode);
+                        changes.majorChangesTime.push(time);
+                    }
+                    changes = JSON.stringify(changes);
+                    fs.writeFile(filePath.split(".")[0]+".json", changes, err => {
+                        if (err) {
+                            console.error(err);
+                        }
+                    })
+                    fs.writeFile(filePath, newCode, err => {
+                        if (err) console.error(err);
+                    })
+                    delete openFiles[filePath];
+                    isOpen = false;
+                }
+            }else{
+                console.error(err);
+            }
+        });
+    })
+
+    const checkForUpdate = async () => {
+        while(isOpen){
+            if(operations.length != 0){
+                let tempOps = operations;
+                operations = [];
+                let final = ""+openFiles[filePath].text;
+                let offsetChanges = [];
+
+                for(let i = 0; i < tempOps.length; i++){
+                    let oper = tempOps[i];
+                    let oldOffset = oper.offset;
+                    for(let j = 0; j < offsetChanges.length; j++){
+                        let change = offsetChanges[j];
+                        if(oper.offset > change.offset){
+                            // oper.offset+=change.value;
+                        }
+                    }
+                    if(oper.operation == "Insert"){
+                        temp = final;
+                        final = final.slice(0, oper.offset) + oper.value + temp.slice(oper.offset);
+                        console.log(final);
+                        offsetChanges.push({offset: oldOffset, value: oper.value.length});
+                    }else if(oper.opeartion == "Delete"){
+                        final = final.substring(0, oper.offset)+final.substring(oper.offset+oper.length);
+                        offsetChanges.push({offset: oldOffset, value: oper.length});
+                    }else if (oper.operation == "Replace"){
+                        final = final.substring(0, oper.offset)+oper.value+final.substring(oper.offset+oper.length);
+                        offsetChanges.push({offset: oldOffset, value: oper.length});
+                    }
+                }
+                openFiles[filePath].text = final;
+
+                let users = openFiles[filePath].users;
+                for(let i = 0; i < users.length; i++){
+                    let temp = users[i];
+                    temp.send(JSON.stringify({type: 0, command: "UPDATE_FILE", text: final}))
+                }
+            }
+            await new Promise(r => setTimeout(r, 100));
+        }
+    }
+
+    checkForUpdate();
 });
 
 server.listen(443);

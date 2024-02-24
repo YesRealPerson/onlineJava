@@ -16,7 +16,7 @@ try {
             let { stdout, stderr } = await exec(("java"), [filename], {
                 cwd: runPath,
                 maxBuffer: maxBuffer,
-                timeout: 1500,
+                timeout: 1250,
             })
             parentPort.postMessage(stdout + "\n" + stderr);
         } else {
