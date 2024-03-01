@@ -64,7 +64,8 @@
 			window.addEventListener('resize', resizeEditor, false);
 			editor = monaco.editor.create(document.getElementById('container'), {
 			language: 'java',
-			theme: 'vs-dark'
+			theme: 'vs-dark',
+			readOnly: true
 		});
 			function resizeEditor() {
 				let temp = document.getElementById("container").getBoundingClientRect();

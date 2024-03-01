@@ -16,9 +16,9 @@ const re = new RegExp("^[_A-z]((-|\s)*[_A-z0-9])*$");
 
 app.use(express.static('./static', { extensions: ['html'] }));
 
-process.on('uncaughtException', function (err) {
+process.on('uncaughtException', function (err, origin) {
   let time = new Date().toString().replace(/T/, ':').replace(/\.\w*/, '');
-  console.log(time + ": " + err);
+  console.log(`Occured at: ${time}\nOrigin: ${origin}\nError: ${err}`);
 });
 
 //WEBSOCKETS
@@ -29,7 +29,6 @@ var WebSocketJSONStream = require('websocket-json-stream');
 
 var backend = new ShareDB();
 var wss = new WebSocket.Server({ server: server });
-let docs = [];
 
 wss.on('connection', function (ws) {
   var stream = new WebSocketJSONStream(ws);
@@ -323,7 +322,7 @@ app.post("/register", async (req, res) => {
     const auth = req.headers.authorization;
     const email = req.body;
     if (allowedUsers.indexOf(email.split("@")[0]) == -1) {
-      res.status(500).send("You are not allowed to use this service!\nIf you believe you should be contact your teacher!")
+      res.status(500).send("You are not allowed to use this service!\nIf you believe you should be contact your admin!")
     } else {
       fs.readFile("users.json", (err, data) => {
         if (err) {
@@ -352,9 +351,16 @@ app.post("/register", async (req, res) => {
                 fs.mkdir("Users/" + email.split("@")[0], { recursive: true }, err => {
                   if (err) {
                     res.status(500).send(err);
+                  }else{
+                    fs.writeFile("Users/" + email.split("@")[0] + "/shared.json", '{"files": []}', err => {
+                      if(err){
+                        res.status(500).send(err);
+                      }else{
+                        res.sendStatus(200);
+                      }
+                    })
                   }
                 });
-                res.sendStatus(200);
               }
             })
           } else {
@@ -412,6 +418,41 @@ app.post("/updateHash", async (req, res) => {
     }
   });
 });
+
+app.post("/shareFile", async (req, res) => {
+  let filename = req.query.name;
+  let toUser = req.query.user;
+  let user = await getUser(req.headers.authorization);
+  if(user != toUser){
+    let exists = fs.existsSync(`Users/${user}/${filename}.java`);
+    if(exists){
+      exists = fs.existsSync(`Users/${toUser}/shared.json`);
+      if(exists){
+        fs.readFile(`Users/${toUser}/shared.json`, (err, data) => {
+          if(err){
+            res.status(500).send(err);
+          }else{
+            let shared = JSON.parse(data);
+            shared.files.push(`${user}/${filename}`);
+            fs.writeFile(`Users/${toUser}/shared.json`, JSON.stringify(shared), err => {
+              if(err){
+                res.status(500).send(err);
+              }else{
+                res.sendStatus(200);
+              }
+            })
+          }
+        })
+      }else{
+        res.status(400).send("This user does not exist!");
+      }
+    }else{
+      res.status(400).send("This file does not exist!");
+    }
+  }else{
+    res.status(400).send("You cannot share with yourself!");
+  }
+})
 
 // GET
 
@@ -478,20 +519,54 @@ app.get("/getFile", async (req, res) => {
   // Create new doc based off of request
   let filename = req.query.name;
   let user = await getUser(req.headers.authorization);
+  if(req.query.username != undefined){
+    user = req.query.username;
+  }
   fs.readFile(`Users/${user}/${filename}.java`, (err, result) => {
+    let connection = backend.connect();
     if (err) {
-      res.status(400).send("This file does not exist!");
+      if (filename == "Main") {
+        let doc = connection.get('files', user + "." + filename);
+        let baseCode = [`class ${filename} {`, '\tpublic static void main(String[] args){', '\t\tSystem.out.println("Hello world!");', '\t}', '}'].join('\n');
+        fs.writeFile(`Users/${user}/${filename}.java`, baseCode, async (err) => {
+          if (err) {
+            res.status(500).send(err);
+          } else {
+            let hash = await checksum(baseCode);
+            let time = Date.now();
+            let changes = {
+              "history": [time],
+              "hashes": [hash],
+              "lastCode": baseCode,
+              "majorChanges": [baseCode],
+              "majorChangesTime": [time]
+            }
+            fs.writeFile(`Users/${user}/${filename}.json`, JSON.stringify(changes), err => {
+              if (err) {
+                res.status(500).send(err);
+              } else {
+                doc.create({ content: text })
+                res.status(200).send({text: text, name: user + "." + filename});
+              }
+            })
+          }
+        })
+      }
     }
     else {
       let text = "" + result;
-      let doc = connection.get('files', filename);
+      let doc = connection.get('files', user + "." + filename);
       doc.fetch(err => {
-        if(err){
+        if (err) {
           res.status(500).send(err);
-        }else{
-          doc.create([{insert: text}])
-          docs.push({item: doc, user: user+"/"+filename});
-          res.sendStatus(200);
+        } else {
+          try {
+            doc.create({ content: text })
+            res.status(200).send({text: text, name: user + "." + filename});
+          } catch {
+            // Doc already created
+            res.status(200).send({text: text, name: user + "." + filename});
+          }
         }
       })
     }
