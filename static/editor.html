@@ -11,10 +11,10 @@
 <body>
 	<div id="messageBox"></div>
 	<div id="main">
-		<div id="container"></div>
+		<div id="editor"></div>
 		<div id="middle">
 			<div style="width:100%; background-color: #222222; height: 50px; border-right: 1px solid grey;">
-				<span style="margin:5px; ">Console</span>
+				<span style="margin:5px; ">Console</span><span id="statusSpan"></span>
 				<br>
 				<button onclick="sendRunRequest()">run code</button>
 				<button onclick="sendCompileRequest()">compile code</button>
@@ -48,99 +48,8 @@
 	<script src="./monaco-editor/min/vs/loader.js"></script>
 	<script src="./monaco-editor/min/vs/editor/editor.main.nls.js"></script>
 	<script src="./monaco-editor/min/vs/editor/editor.main.js"></script>
-	<script src="./monaco-collab-ext/umd/monaco-collab-ext.js"></script>
-	<script src="./test.communicate.js"></script>
+	<script src="./communicate.js"></script>
 	<script src="./notifications.js"></script>
-	<script>
-		var editor = monaco.editor.create(document.getElementById('container'), {
-			language: 'java',
-			theme: 'vs-dark'
-		});
-		require(['MonacoCollabExt'], function(MonacoCollabExt) {
-		const re = new RegExp("^[_A-z0-9]*((-|\s)*[_A-z0-9])*$");
-		let keyCounter = 0;
-
-		const contentManager = new MonacoCollabExt.EditorContentManager({
-			editor: editor,
-			onInsert(index, text) {
-				fastUpdate({operation: "Insert", offset: index, value: text});
-			},
-			onReplace(index, length, text) {
-				fastUpdate({operation: "Replace", offset: index, length: length, value: text});
-			},
-			onDelete(index, length) {
-				fastUpdate({operation: "Delete", offset: index, length: length});
-			}
-		});
-
-		const starter = async () => {
-			await getFile("Main");
-			readFiles();
-		}
-		starter();
-
-		document.getElementById("newFile").addEventListener("keyup", async event => {
-			if (event.key !== "Enter") return;
-			const re = new RegExp("^[_A-z]((-|\s)*[_A-z0-9])*$");
-			let name = document.getElementById("newFile").value;
-			try {
-				document.getElementById("newFile").value = "";
-				name = re.exec([name])[0];
-				const response = await fetch("./makefile?name=" + name, {
-					method: 'POST',
-					headers: {
-						"Authorization": document.cookie.split("key=")[1]
-					},
-				});
-				readFiles();
-			} catch (err) {
-				makeNotification("Invalid name for file! (Must be alphanumeric and start with a letter)")
-			}
-			event.preventDefault();
-		});
-		document.addEventListener("keydown", function (e) {
-			if (e.keyCode === 83 && (navigator.platform.match("Mac") ? e.metaKey : e.ctrlKey)) {
-				e.preventDefault();
-				sendCompileRequest();
-			}
-			if (e.keyCode === 13 && (navigator.platform.match("Mac") ? e.metaKey : e.ctrlKey)) {
-				e.preventDefault();
-				sendRunRequest();
-			}
-		}, false);
-
-		document.getElementById("container").addEventListener("keydown", function (e) {
-			let code = e.keyCode;
-			let char = String.fromCharCode(code);
-			// let position = editor.getPosition();
-			// fastUpdate(position.lineNumber, position.column, code);
-			if (re.test(char)) {
-				keyCounter++;
-			}
-			if (code === 13 && (navigator.platform.match("Mac") ? e.metaKey : e.ctrlKey)) {
-				e.preventDefault();
-				sendRunRequest();
-			}
-			if (keyCounter == 50) {
-				console.log("Updating hash!");
-				updateHash();
-				keyCounter = 0;
-			}
-		}, false);
-
-		(function () {
-			// resize the canvas to fill browser window dynamically
-			window.addEventListener('resize', resizeEditor, false);
-
-			function resizeEditor() {
-				let temp = document.getElementById("container").getBoundingClientRect();
-				editor.layout({ "height": temp.height - 2, "width": temp.width - 2 });
-			}
-
-			resizeEditor();
-		})();
-	});
-	</script>
 </body>
 
 </html>
