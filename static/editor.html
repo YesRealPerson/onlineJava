@@ -1,55 +1,48 @@
 <!DOCTYPE html>
 <html>
-
 <head>
-	<meta http-equiv="Content-Type" content="text/html;charset=utf-8" />
-	<link rel="stylesheet" data-name="vs/editor/editor.main" href="./monaco-editor/min/vs/editor/editor.main.css" />
-	<link rel="stylesheet" href="./styles.css" />
-	<title>Editor</title>
-	<script src="./users.js"></script>
-
-	<script>
-		let key = document.cookie.split("key=")[1];
-		checkLogin(key, "./loginSite");
-		var require = { paths: { vs: '../monaco-editor/min/vs' } };
-	</script>
-	<script src="./monaco-editor/min/vs/loader.js"></script>
-	<script src="./monaco-editor/min/vs/editor/editor.main.nls.js"></script>
-	<script src="./monaco-editor/min/vs/editor/editor.main.js"></script>
-	<script src="./communicate.js" defer></script>
-	<script src="./notifications.js"></script>
+    <meta http-equiv="Content-Type" content="text/html;charset=utf-8" />
+    <script>
+        const unauthorized = () => {
+            window.location = "./";
+        }
+        try {
+            (async function () {
+                let auth = document.cookie.split("key=")[1];
+                if (auth == undefined) {
+                    unauthorized();
+                } else {
+                    const response = await fetch("./serveEditor", {
+                        method: 'GET',
+                        headers: {
+                            "Authorization": auth
+                        },
+                    })
+                    document.open();
+                    document.write(await response.text());
+                    document.close();
+                    document.title = "editor";
+                }
+            })()
+        } catch (err){
+            unauthorized();
+        }
+    </script>
+    <script src="./particles.js" defer></script>
+    <title>Loading</title>
+    <link rel="stylesheet" href="./styles.css" />
 </head>
 
 <body>
-	<div id="messageBox"></div>
-	<div id="main">
-		<div id="editor"></div>
-		<div id="middle">
-			<div style="width:100%; background-color: #222222; height: 50px; border-right: 1px solid grey;">
-				<span style="margin:5px; ">Console</span> |  Status: <span id="status-span"></span>
-				<br>
-				<button id="RunButton">run code</button>
-				<button id="CompileButton">compile code</button>
-				<button id="HelpButton">help</button>
-			</div>
-			<div style="width:100%; background-color: #222222; height: 50px;">
-				<span style="margin:5px;">Files</span>
-				<br>
-				<input autocomplete="off" type="text" placeholder="Make new file" id="newFile">
-				<button id="DeleteButton">delete current file</button>
-				<button id="ShareButton">share current file</button>
-			</div>
-		</div>
-		<div id="bottom">
-			<div id="output">
-				<div id="console"></div>
-			</div>
-			<div id="fileSystem">
-				<div>Your Files<br><span id="list"></span></div>
-				<div>Shared Files<br><span id="sharedList"></span></div>
-			</div>
-		</div>
-	</div>
+    <canvas id="canvas"></canvas>
+    <main>
+        <main>
+            <div style="border:none; background: none;">
+                <h1 style="font-size: 10vh; pointer-events: none; text-shadow: 2px 0 #000, -2px 0 #000, 0 2px #000, 0 -2px #000,
+                1px 1px #000, -1px -1px #000, 1px -1px #000, -1px 1px #000;">Loading</h1>
+            </div>
+        </main>
+    </main>
 </body>
 
 </html>

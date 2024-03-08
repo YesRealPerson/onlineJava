@@ -770,6 +770,24 @@
       language: "java",
       theme: "vs-dark"
     });
+    const makeNotification = async (message, time) => {
+      let notification = document.createElement("div");
+      notification.innerText = message;
+      notification.className = "message";
+      notification.style.opacity = 0;
+      document.getElementById("messageBox").appendChild(notification);
+      for (let opacity = 0; opacity < 1; opacity = opacity + 0.1) {
+        notification.style.opacity = opacity;
+        await new Promise(r => setTimeout(r, 10));
+      }
+      await new Promise(r => setTimeout(r, time));
+      for (let opacity = 1; opacity > 0; opacity = opacity - 0.1) {
+        notification.style.opacity = opacity;
+        await new Promise(r => setTimeout(r, 10));
+      }
+      await new Promise(r => setTimeout(r, 10));
+      notification.remove();
+    }
     var ShareDBMonaco = require("sharedb-monaco").default;
     var sharedb = require("sharedb/lib/client");
     var ReconnectingWebSocket = require('reconnecting-websocket');
@@ -826,7 +844,11 @@
     const updateHash = async () => {
       let auth = document.cookie.split("key=")[1];
       if (auth != undefined && auth != "") {
-        const response = await fetch("./updateHash?name=" + currentFile, {
+        let query = "";
+        if (currentFile.split("/").length > 1) {
+          query = "&username=" + currentFile.split("/")[0];
+        }
+        const response = await fetch("./updateHash?name=" + currentFile + query, {
           method: 'POST',
           headers: {
             "Authorization": auth
@@ -846,7 +868,11 @@
           makeNotification("Sent run request!", 1500);
           running = true;
           consoleElement.innerText = "Running!"
-          const response = await fetch("./run", {
+          let query = "";
+          if (currentFile.split("/").length > 1) {
+            query = "?username=" + currentFile.split("/")[0];
+          }
+          const response = await fetch("./run" + query, {
             method: 'POST',
             headers: {
               "Authorization": document.cookie.split("key=")[1]
@@ -875,7 +901,11 @@
           makeNotification("Sent compile request!", 1500);
           consoleElement.innerText = "Compiling!";
         }
-        const response = await fetch("./compile", {
+        let query = "";
+        if (currentFile.split("/").length > 1) {
+          query = "?username=" + currentFile.split("/")[0];
+        }
+        const response = await fetch("./compile" + query, {
           method: 'POST',
           headers: {
             "Authorization": document.cookie.split("key=")[1]
@@ -901,7 +931,10 @@
             "Authorization": document.cookie.split("key=")[1]
           },
         })
-        let files = await response.text();
+        let files = JSON.parse(await response.text());
+        let shared = files.shared;
+        console.log(shared);
+        files = files.owned;
         files = files.split(",");
         let list = document.getElementById("list");
         list.innerText = "";
@@ -912,7 +945,21 @@
           temp.addEventListener("click", () => {
             getFile(rawName);
           })
-          // temp.setAttribute("onclick", `getFile("${files[i].split(".")[0]}")`);
+          list.appendChild(temp);
+          temp = document.createElement("br");
+          list.appendChild(temp);
+        }
+        list = document.getElementById("sharedList");
+        list.innerText = "";
+        for (i in shared) {
+          let temp = document.createElement("a");
+          let name = shared[i];
+          let un = name.split("/")[0];
+          let fn = name.split("/")[1];
+          temp.innerText = name;
+          temp.addEventListener("click", () => {
+            getFile(fn, un);
+          })
           list.appendChild(temp);
           temp = document.createElement("br");
           list.appendChild(temp);
@@ -925,21 +972,25 @@
     const deleteRequest = async () => {
       let auth = document.cookie.split("key=")[1];
       if (auth != undefined && auth != "") {
-        if (currentFile != "Main" && confirm(`Are you sure you want to delete ${currentFile}?`)) {
-          makeNotification(`Deleting ${currentFile}!`, 1500);
-          const response = await fetch("./deleteFile?name=" + currentFile, {
-            method: 'POST',
-            headers: {
-              "Authorization": document.cookie.split("key=")[1]
-            },
-          });
-          let text = await response.text();
-          makeNotification(text, 1500);
-          getFile("Main");
-          readFiles();
+        if (currentFile.split("/").length > 1) {
+          makeNotification("You cannot delete a file shared with you!", 1500);
         } else {
-          if (currentFile == "Main") {
-            makeNotification("You cannot delete 'Main'!", 1500);
+          if (currentFile != "Main" && confirm(`Are you sure you want to delete ${currentFile}?`)) {
+            makeNotification(`Deleting ${currentFile}!`, 1500);
+            const response = await fetch("./deleteFile?name=" + currentFile, {
+              method: 'POST',
+              headers: {
+                "Authorization": document.cookie.split("key=")[1]
+              },
+            });
+            let text = await response.text();
+            makeNotification(text, 1500);
+            getFile("Main");
+            readFiles();
+          } else {
+            if (currentFile == "Main") {
+              makeNotification("You cannot delete 'Main'!", 1500);
+            }
           }
         }
       } else {
@@ -949,10 +1000,15 @@
 
     let doc = null;
     let socket = null;
-    const getFile = async (name) => {
-      if(doc != null){
+    const getFile = async (name, username) => {
+      if (doc != null) {
         doc.destroy();
         socket.close();
+      }
+      if (username != undefined) {
+        let temp = name;
+        name += "&username=" + username;
+        username = username + "/" + temp;
       }
       const response = await fetch("./getFile?name=" + name, {
         method: 'GET',
@@ -961,9 +1017,13 @@
         },
       })
       if (response.status == 200) {
+        if (username != undefined) {
+          name = username;
+        }
         let resp = JSON.parse(await response.text());
         editor.setValue(resp.text);
         currentFile = name;
+        document.getElementById("currentFile").innerText = currentFile;
         socket = new ReconnectingWebSocket('wss://' + window.location.host, [], {
           maxEnqueuedMessages: 0
         });
@@ -1014,24 +1074,37 @@
     // CTRL S
     editor.addCommand(
       monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS,
-      () => {sendCompileRequest(false)}
+      () => { sendCompileRequest(false) }
     )
 
     // On click functions
     document.getElementById("RunButton").addEventListener("click", sendRunRequest);
-    document.getElementById("CompileButton").addEventListener("click", () => {sendCompileRequest(false)});
+    document.getElementById("CompileButton").addEventListener("click", () => { sendCompileRequest(false) });
     document.getElementById("DeleteButton").addEventListener("click", deleteRequest);
-    document.getElementById("DeleteButton").addEventListener("click", () => {
-      makeNotification('Press Ctrl+S to compile your program\n\nPress Ctrl+Enter to run your program\n\nMake new files by typing the name of the file into the text box and pressing enter.\n\nWhenever you run or compile, your code is saved.\n\nMake sure to save often!', 10000)
+    document.getElementById("HelpButton").addEventListener("click", () => {
+      makeNotification('Press Ctrl+S to compile your program\n\nPress Ctrl+Enter to run your program\n\nMake new files by typing the name of the file into the text box and pressing enter.\n\nWhenever you run or compile, your code is saved.\n\nMake sure to save often!', 10000);
     });
     document.getElementById("ShareButton").addEventListener("click", async () => {
       let toShareUser = prompt("Who would you like to share to?");
-      const response = await fetch(`./shareFile?name=${currentFile}&user=toShareUser`, {
-        method: 'POST',
-        headers: {
-          "Authorization": document.cookie.split("key=")[1]
-        },
-      });
+      if (toShareUser != null) {
+        if (currentFile.split("/").length > 1) {
+          makeNotification("You cannot share a file you don't own!", 1500);
+        } else {
+          const response = await fetch(`./shareFile?name=${currentFile}&user=${toShareUser}`, {
+            method: 'POST',
+            headers: {
+              "Authorization": document.cookie.split("key=")[1]
+            },
+          });
+          if (response.status == 200) {
+            makeNotification("Shared file to " + toShareUser, 1500);
+          } else {
+            let error = await response.text();
+            makeNotification("Failed to share file!\n\n" + error, 1500)
+            console.log(error);
+          }
+        }
+      }
     });
 
     // Begin

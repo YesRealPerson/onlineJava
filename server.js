@@ -7,12 +7,13 @@ const { createHmac } = require('node:crypto');
 
 env.config();
 
-const key = fs.readFileSync('./key.pem');
-const cert = fs.readFileSync('./cert.pem');
+const key = fs.readFileSync('./Keys/key.pem');
+const cert = fs.readFileSync('./Keys/cert.pem');
 const allowedUsers = process.env.ALLOWED_USERS.split(",");
 const app = express();
 const server = https.createServer({ key: key, cert: cert }, app);
 const re = new RegExp("^[_A-z]((-|\s)*[_A-z0-9])*$");
+const allowedEmail = "nhusd.k12.ca.us";
 
 app.use(express.static('./static', { extensions: ['html'] }));
 
@@ -141,6 +142,23 @@ const checkAdmin = async (req) => {
   })
 }
 
+const checkShare = async (user, shareUser, shareFile) => {
+  return new Promise((res, rej) => {
+    fs.readFile(`./Users/${user}/shared.json`, (err, data) => {
+      if (err) {
+        console.error(err);
+      } else {
+        data = JSON.parse(data);
+        if (data.files.indexOf(shareUser + "/" + shareFile) != -1) {
+          res(true);
+        } else {
+          res(false);
+        }
+      }
+    })
+  })
+}
+
 const getUser = async (auth) => {
   return new Promise((res, rej) => {
     fs.readFile("users.json", (err, data) => {
@@ -151,6 +169,24 @@ const getUser = async (auth) => {
         try {
           let users = JSON.parse("" + data);
           res(users[auth].email.split("@")[0]);
+        } catch (err) {
+          rej(err);
+        }
+      }
+    })
+  });
+}
+
+const checkUser = async (auth) => {
+  return new Promise((res, rej) => {
+    fs.readFile("users.json", (err, data) => {
+      if (err) {
+        rej(err);
+      }
+      else {
+        try {
+          let users = Object.keys(JSON.parse("" + data));
+          res(users.indexOf(auth) != -1);
         } catch (err) {
           rej(err);
         }
@@ -184,9 +220,16 @@ app.post("/compile", async (req, res) => {
   let code = req.body;
   let beingNaughty = checkEvil(code);
   if (beingNaughty == "") {
-    let user = await getUser(req.headers.authorization);
     let filename = code.split("{")[0].trim().split(" ");
     filename = filename[filename.length - 1];
+    let user = await getUser(req.headers.authorization);
+    if (req.query.username != undefined) {
+      if (await checkShare(user, req.query.username, filename)) {
+        user = req.query.username;
+      } else {
+        console.error("Malformed share request!");
+      }
+    }
     if (re.test(filename)) {
       if (fs.existsSync(`./Users/${user}/${filename}.java`)) {
         fs.writeFile(`./Users/${user}/${filename}.java`, code, async (err) => {
@@ -224,6 +267,13 @@ app.post("/run", async (req, res) => {
     let user = await getUser(req.headers.authorization);
     let filename = code.split("{")[0].trim().split(" ");
     filename = filename[filename.length - 1];
+    if (req.query.username != undefined) {
+      if (await checkShare(user, req.query.username, filename)) {
+        user = req.query.username;
+      } else {
+        console.error("Malformed share request!");
+      }
+    }
     if (re.test(filename)) {
       if (fs.existsSync(`./Users/${user}/${filename}.java`)) {
         fs.writeFile(`./Users/${user}/${filename}.java`, code, async (err) => {
@@ -322,53 +372,56 @@ app.post("/register", async (req, res) => {
     const auth = req.headers.authorization;
     const email = req.body;
     if (allowedUsers.indexOf(email.split("@")[0]) == -1) {
-      res.status(500).send("You are not allowed to use this service!\nIf you believe you should be contact your admin!")
+      res.status(400).send("You are not allowed to use this service!\nIf you believe you should be contact your admin!");
     } else {
-      fs.readFile("users.json", (err, data) => {
-        if (err) {
-          res.status(500).send(err);
-        } else {
-          data = JSON.parse("" + data);
-          keys = Object.keys(data);
+      if (email.split("@")[1] == allowedEmail) {
+        fs.readFile("users.json", (err, data) => {
+          if (err) {
+            res.status(500).send(err);
+          } else {
+            data = JSON.parse("" + data);
+            keys = Object.keys(data);
 
-          let funny = false;
+            let funny = false;
 
-          for (i in keys) {
-            test = keys[i];
-            if (data[test] == email) {
-              funny = true;
-              break;
+            for (i in keys) {
+              test = keys[i];
+              if (data[test] == email) {
+                funny = true;
+                break;
+              }
+            }
+
+            if (!funny) {
+              data[auth] = { "email": email, "admin": false };
+              let dataStr = JSON.stringify(data);
+              fs.writeFile("users.json", dataStr, err => {
+                if (err) {
+                  res.status(500).send(err);
+                } else {
+                  fs.mkdir("Users/" + email.split("@")[0], { recursive: true }, err => {
+                    if (err) {
+                      res.status(500).send(err);
+                    } else {
+                      fs.writeFile("Users/" + email.split("@")[0] + "/shared.json", '{"files": []}', err => {
+                        if (err) {
+                          res.status(500).send(err);
+                        } else {
+                          res.sendStatus(200);
+                        }
+                      })
+                    }
+                  });
+                }
+              })
+            } else {
+              res.status(400).send("You already have an account! See your admin for your password");
             }
           }
-
-          if (!funny) {
-            data[auth] = { "email": email, "admin": false };
-            let dataStr = JSON.stringify(data);
-            fs.writeFile("users.json", dataStr, err => {
-              if (err) {
-                res.status(500).send(err);
-              } else {
-                fs.mkdir("Users/" + email.split("@")[0], { recursive: true }, err => {
-                  if (err) {
-                    res.status(500).send(err);
-                  }else{
-                    fs.writeFile("Users/" + email.split("@")[0] + "/shared.json", '{"files": []}', err => {
-                      if(err){
-                        res.status(500).send(err);
-                      }else{
-                        res.sendStatus(200);
-                      }
-                    })
-                  }
-                });
-              }
-            })
-          } else {
-            res.statusMessage = "You already have an account! See your teacher for your password";
-            res.status(400).send("You already have an account! See your teacher for your password");
-          }
-        }
-      });
+        });
+      } else {
+        res.status(400).send("Please use an email address from the correct domain.");
+      }
     }
   } catch (err) {
     res.status(500).send(err);
@@ -378,6 +431,14 @@ app.post("/register", async (req, res) => {
 app.post("/updateHash", async (req, res) => {
   let filename = req.query.name;
   let user = await getUser(req.headers.authorization);
+  if (req.query.username != undefined) {
+    if (await checkShare(user, req.query.username, filename.split("/")[1])) {
+      user = req.query.username;
+      filename = filename.split("/")[1];
+    } else {
+      console.error("Malformed share request!");
+    }
+  }
   fs.readFile(`Users/${user}/${filename}.json`, async (err, funny) => {
     if (err) {
       res.status(500).send(err);
@@ -423,33 +484,33 @@ app.post("/shareFile", async (req, res) => {
   let filename = req.query.name;
   let toUser = req.query.user;
   let user = await getUser(req.headers.authorization);
-  if(user != toUser){
+  if (user != toUser) {
     let exists = fs.existsSync(`Users/${user}/${filename}.java`);
-    if(exists){
+    if (exists) {
       exists = fs.existsSync(`Users/${toUser}/shared.json`);
-      if(exists){
+      if (exists) {
         fs.readFile(`Users/${toUser}/shared.json`, (err, data) => {
-          if(err){
+          if (err) {
             res.status(500).send(err);
-          }else{
+          } else {
             let shared = JSON.parse(data);
             shared.files.push(`${user}/${filename}`);
             fs.writeFile(`Users/${toUser}/shared.json`, JSON.stringify(shared), err => {
-              if(err){
+              if (err) {
                 res.status(500).send(err);
-              }else{
+              } else {
                 res.sendStatus(200);
               }
             })
           }
         })
-      }else{
+      } else {
         res.status(400).send("This user does not exist!");
       }
-    }else{
+    } else {
       res.status(400).send("This file does not exist!");
     }
-  }else{
+  } else {
     res.status(400).send("You cannot share with yourself!");
   }
 })
@@ -472,14 +533,14 @@ app.get("/readfile", async (req, res) => {
 app.post("/makefile", async (req, res) => {
   let filename = req.query.name;
   let user = await getUser(req.headers.authorization);
-  if (re.test(filename)) {
+  if (re.test(filename) && filename.toLowerCase() != "shared") {
     let baseCode = [`class ${filename} {`, '\tpublic static void main(String[] args){', '\t\tSystem.out.println("Hello world!");', '\t}', '}'].join('\n');
     fs.writeFile(`Users/${user}/${filename}.java`, baseCode, async (err) => {
       if (err) {
         res.status(500).send(err);
       } else {
         let hash = await checksum(baseCode);
-        let time = Date.now();
+        let time = Date.now(); ``
         let changes = {
           "history": [time],
           "hashes": [hash],
@@ -504,14 +565,30 @@ app.post("/makefile", async (req, res) => {
 app.get("/filelist", async (req, res) => {
   let user = await getUser(req.headers.authorization);
   fs.readdir(`Users/${user}/`, (err, files) => {
-    result = "";
-    files.forEach(file => {
-      let temp = file.split(".");
-      if (temp[temp.length - 1] == "java") {
-        result += file + ",";
-      }
-    });
-    res.status(200).send(result.substring(0, result.length - 1));
+    if (err) {
+      res.status(500).send(err)
+    } else {
+      result = "";
+      files.forEach(file => {
+        let temp = file.split(".");
+        if (temp[temp.length - 1] == "java") {
+          result += file + ",";
+        }
+      });
+      let shared = "";
+      fs.readFile(`Users/${user}/shared.json`, (err, data) => {
+        if (err) {
+          res.status(500).send(err);
+        } else {
+          data = JSON.parse(data).files;
+          let final = {
+            owned: result.substring(0, result.length - 1),
+            shared: data
+          }
+          res.status(200).send(final);
+        }
+      })
+    }
   });
 });
 
@@ -519,7 +596,7 @@ app.get("/getFile", async (req, res) => {
   // Create new doc based off of request
   let filename = req.query.name;
   let user = await getUser(req.headers.authorization);
-  if(req.query.username != undefined){
+  if (req.query.username != undefined) {
     user = req.query.username;
   }
   fs.readFile(`Users/${user}/${filename}.java`, (err, result) => {
@@ -545,8 +622,8 @@ app.get("/getFile", async (req, res) => {
               if (err) {
                 res.status(500).send(err);
               } else {
-                doc.create({ content: text })
-                res.status(200).send({text: text, name: user + "." + filename});
+                doc.create({ content: baseCode })
+                res.status(200).send({ text: baseCode, name: user + "." + filename });
               }
             })
           }
@@ -562,16 +639,25 @@ app.get("/getFile", async (req, res) => {
         } else {
           try {
             doc.create({ content: text })
-            res.status(200).send({text: text, name: user + "." + filename});
+            res.status(200).send({ text: text, name: user + "." + filename });
           } catch {
             // Doc already created
-            res.status(200).send({text: text, name: user + "." + filename});
+            res.status(200).send({ text: text, name: user + "." + filename });
           }
         }
       })
     }
   })
 })
+
+app.get("/serveEditor", async (req, res) => {
+  let allow = (await checkUser(req.headers.authorization));
+  if (allow) {
+    res.sendFile("editor.html", { root: __dirname });
+  } else {
+    res.status(401).sendFile("401.html", { root: __dirname });
+  }
+});
 
 // ADMIN FUNCTIONS
 
@@ -722,6 +808,10 @@ app.post("/runAdmin", async (req, res) => {
   } else {
     res.sendStatus(authorized);
   }
+});
+
+app.all('*', (req, res) => {
+  res.status(404).sendFile("404.html", { root: __dirname });
 });
 
 // KEEP AT BOTTOM

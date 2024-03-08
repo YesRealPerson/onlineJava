@@ -20,10 +20,19 @@
                 <input type="username" placeholder=" Username" id="name"><br>
                 <input type="password" placeholder=" Password" id="password"><br>
             </form>
-            <button onclick="login()">login</button>
-            <button onclick="registerWindow()">register</button>
+            <button id="login">login</button>
+            <button id="register">register</button>
         </div>
     </main>
+    <script>
+        document.getElementById("login").addEventListener("click", () => {login()});
+        window.addEventListener("keyup", e => {
+            if(e.keyCode == 13){
+                login();
+            }
+        });
+        document.getElementById("register").addEventListener("click", () => {registerWindow()});
+    </script>
 </body>
 
 </html>

@@ -17,7 +17,7 @@
         <h1 style="pointer-events: none;">Register</h1>
         <div style="pointer-events: none;" id="error"></div>
         <form target="dummyframe" onsubmit="register()">
-            <input type="text" placeholder=" Email" id="email" pattern="[A-Za-z0-9]+@nhusd\.k12\.ca\.us"><br>
+            <input type="text" placeholder=" Email" id="email"><br>
             <input type="text" placeholder=" Username" id="name" pattern="^[_A-z0-9]*((-|\s)*[_A-z0-9])*$"><br>
             <input type="password" placeholder=" Password" id="password"
                 pattern="^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,64}$"><br>
@@ -25,7 +25,7 @@
         </form>
         <div style="font-size: 20px; pointer-events: none;">
             <h2>Requirements</h2>
-            Email must be a school email.<br><br>
+            Email must be from the correct organization.<br><br>
             Username must be alphanumeric.<br><br>
             Password must:
             <ul>

@@ -119,7 +119,7 @@ main > div > h1 {
     pointer-events: none;
     margin: 1vh;
 }
-#list a{
+#list a, #sharedList a{
     color:aqua;
     user-select: none;
 }

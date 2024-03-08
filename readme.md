@@ -12,7 +12,7 @@ Fill out the .env file with your permitted users (comma seperated)
 
 (this is based off of the value before the @ in an email address, for example to permit user@domain.com add user to the allowed users value)
 
-Change the RegEx for the email address entry field under 'registerSite.html' to fit your email format.
+Change the allowedEmail variable in server.js to the desired domain
 
 Run start.bat
 
