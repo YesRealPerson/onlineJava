@@ -650,15 +650,6 @@ app.get("/getFile", async (req, res) => {
   })
 })
 
-app.get("/serveEditor", async (req, res) => {
-  let allow = (await checkUser(req.headers.authorization));
-  if (allow) {
-    res.sendFile("editor.html", { root: __dirname });
-  } else {
-    res.status(401).sendFile("401.html", { root: __dirname });
-  }
-});
-
 // ADMIN FUNCTIONS
 
 // GET
